@@ -23,12 +23,6 @@ export interface ToolUse {
   input: Record<string, any>;
 }
 
-export interface Tool {
-  name: string;
-  description: string;
-  input_schema: Record<string, any>;
-}
-
 export interface LLMHistoryEntry {
   type:
     | "user_prompt"

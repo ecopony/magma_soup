@@ -2,7 +2,7 @@
 // ABOUTME: Handles message sending, tool use extraction, and response parsing
 
 import Anthropic from '@anthropic-ai/sdk';
-import type { Message, Tool, ToolUse } from '../types/index.js';
+import type { Message, ToolUse } from '../types/index.js';
 
 export class AnthropicService {
   private client: Anthropic;
@@ -18,7 +18,7 @@ export class AnthropicService {
 
   async sendMessage(options: {
     prompt?: string;
-    tools?: Tool[];
+    tools?: Anthropic.Tool[];
     conversationHistory?: Message[];
   }): Promise<any> {
     const { prompt, tools, conversationHistory } = options;

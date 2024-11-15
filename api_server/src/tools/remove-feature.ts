@@ -1,6 +1,7 @@
 // ABOUTME: Local tool for removing geographic features from the map
 // ABOUTME: Performs search on feature labels and handles disambiguation
 
+import Anthropic from "@anthropic-ai/sdk";
 import { getPool } from "../config/database.js";
 
 interface RemoveFeatureInput {
@@ -8,7 +9,7 @@ interface RemoveFeatureInput {
   query: string;
 }
 
-export const removeFeatureTool = {
+export const removeFeatureTool: Anthropic.Tool = {
   name: "remove_map_feature",
   description:
     "Remove a map feature by searching for it by label. IMPORTANT: Use the conversation_id from the system prompt. Returns success message or disambiguation prompt.",
