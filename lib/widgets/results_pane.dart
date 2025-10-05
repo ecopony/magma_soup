@@ -12,7 +12,7 @@ class ResultsPane extends StatelessWidget {
     return BlocBuilder<ChatBloc, ChatState>(
       builder: (context, state) {
         if (state.results.isEmpty) {
-          return Center(
+          return const Center(
             child: Text(
               'No results yet',
               style: TextStyle(
@@ -24,7 +24,7 @@ class ResultsPane extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           itemCount: state.results.length,
           itemBuilder: (context, index) {
             final result = state.results[index];
@@ -44,26 +44,26 @@ class ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.only(bottom: 16),
-      color: Color(0xFFfdf6e3), // base3
+      margin: const EdgeInsets.only(bottom: 16),
+      color: const Color(0xFFfdf6e3), // base3
       elevation: 2,
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.terminal,
                   size: 16,
                   color: Color(0xFF268bd2), // blue
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     result.command,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF268bd2), // blue
                       fontFamily: 'monospace',
@@ -72,24 +72,24 @@ class ResultCard extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               _formatTimestamp(result.timestamp),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: Color(0xFF93a1a1), // base1
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Color(0xFFeee8d5), // base2
+                color: const Color(0xFFeee8d5), // base2
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 result.output,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'monospace',
                   color: Color(0xFF657b83), // base00
                 ),

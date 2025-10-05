@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'bloc/chat_bloc.dart';
 import 'widgets/chat_pane.dart';
 import 'widgets/results_pane.dart';
 
-void main() {
+Future<void> main() async {
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    // .env file is optional - app will use empty string for API key
+    // and show error when trying to send messages
+  }
   runApp(const MyApp());
 }
 
@@ -15,24 +22,24 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Magma Soup',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme(
+        colorScheme: const ColorScheme(
           brightness: Brightness.light,
-          primary: Color(0xFF268bd2),      // blue
-          onPrimary: Color(0xFFfdf6e3),    // base3
-          secondary: Color(0xFF2aa198),    // cyan
-          onSecondary: Color(0xFFfdf6e3),  // base3
-          error: Color(0xFFdc322f),        // red
-          onError: Color(0xFFfdf6e3),      // base3
-          surface: Color(0xFFfdf6e3),      // base3
-          onSurface: Color(0xFF657b83),    // base00
+          primary: Color(0xFF268bd2), // blue
+          onPrimary: Color(0xFFfdf6e3), // base3
+          secondary: Color(0xFF2aa198), // cyan
+          onSecondary: Color(0xFFfdf6e3), // base3
+          error: Color(0xFFdc322f), // red
+          onError: Color(0xFFfdf6e3), // base3
+          surface: Color(0xFFfdf6e3), // base3
+          onSurface: Color(0xFF657b83), // base00
         ),
-        scaffoldBackgroundColor: Color(0xFFeee8d5), // base2
-        appBarTheme: AppBarTheme(
-          backgroundColor: Color(0xFFfdf6e3),       // base3
-          foregroundColor: Color(0xFF657b83),       // base00
+        scaffoldBackgroundColor: const Color(0xFFeee8d5), // base2
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFfdf6e3), // base3
+          foregroundColor: Color(0xFF657b83), // base00
         ),
       ),
       home: BlocProvider(
@@ -56,16 +63,16 @@ class MyHomePage extends StatelessWidget {
       ),
       body: Row(
         children: [
-          Expanded(
+          const Expanded(
             flex: 1,
             child: ChatPane(),
           ),
-          VerticalDivider(
+          const VerticalDivider(
             width: 1,
             thickness: 1,
             color: Color(0xFF93a1a1), // base1
           ),
-          Expanded(
+          const Expanded(
             flex: 1,
             child: ResultsPane(),
           ),
