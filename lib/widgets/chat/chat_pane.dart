@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/chat_bloc.dart';
-import '../bloc/chat_event.dart';
-import '../bloc/chat_state.dart';
-import '../models/message.dart';
+import '../../bloc/chat_bloc.dart';
+import '../../bloc/chat_event.dart';
+import '../../bloc/chat_state.dart';
+import 'message_bubble.dart';
+import 'loading_indicator.dart';
 
 class ChatPane extends StatefulWidget {
   const ChatPane({super.key});
@@ -39,33 +40,7 @@ class _ChatPaneState extends State<ChatPane> {
                     },
                   ),
                   if (state.status == ChatStatus.loading)
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFfdf6e3),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF268bd2),
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Text('Processing...'),
-                          ],
-                        ),
-                      ),
-                    ),
+                    const LoadingIndicator(),
                 ],
               );
             },
@@ -125,43 +100,6 @@ class _ChatPaneState extends State<ChatPane> {
           },
         ),
       ],
-    );
-  }
-}
-
-class MessageBubble extends StatelessWidget {
-  final Message message;
-
-  const MessageBubble({super.key, required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    final isUser = message.type == MessageType.user;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          Container(
-            constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isUser
-                  ? const Color(0xFF268bd2) // blue
-                  : const Color(0xFF93a1a1), // base1
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              message.text,
-              style: const TextStyle(
-                color: Color(0xFFfdf6e3), // base3
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

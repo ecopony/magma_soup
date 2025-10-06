@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'bloc/chat_bloc.dart';
-import 'widgets/chat_pane.dart';
-import 'widgets/results_pane.dart';
+import 'widgets/chat/chat_pane.dart';
+import 'widgets/results/results_pane.dart';
 
 Future<void> main() async {
   try {
