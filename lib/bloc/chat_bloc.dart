@@ -52,6 +52,21 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         {'role': 'user', 'content': prompt}
       ];
 
+      // Track full LLM interaction for debugging/display
+      final llmHistory = <Map<String, dynamic>>[
+        {
+          'type': 'user_prompt',
+          'timestamp': DateTime.now().toIso8601String(),
+          'content': prompt,
+        },
+        {
+          'type': 'llm_response',
+          'timestamp': DateTime.now().toIso8601String(),
+          'stop_reason': response['stop_reason'],
+          'content': response['content'],
+        },
+      ];
+
       int toolCallCount = 0;
       const maxToolCalls = 10;
 
@@ -84,12 +99,40 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               'tool_use_id': toolUseId,
               'content': result,
             });
+
+            // Track tool call and result in history
+            llmHistory.add({
+              'type': 'tool_call',
+              'timestamp': DateTime.now().toIso8601String(),
+              'tool_name': toolName,
+              'arguments': toolInput,
+            });
+            llmHistory.add({
+              'type': 'tool_result',
+              'timestamp': DateTime.now().toIso8601String(),
+              'tool_name': toolName,
+              'result': result,
+            });
           } catch (e) {
             toolResults.add({
               'type': 'tool_result',
               'tool_use_id': toolUseId,
               'content': 'Error: ${e.toString()}',
               'is_error': true,
+            });
+
+            // Track tool error in history
+            llmHistory.add({
+              'type': 'tool_call',
+              'timestamp': DateTime.now().toIso8601String(),
+              'tool_name': toolName,
+              'arguments': toolInput,
+            });
+            llmHistory.add({
+              'type': 'tool_error',
+              'timestamp': DateTime.now().toIso8601String(),
+              'tool_name': toolName,
+              'error': e.toString(),
             });
           }
         }
@@ -104,6 +147,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           tools: tools,
           conversationHistory: conversationHistory,
         );
+
+        // Track subsequent LLM response
+        llmHistory.add({
+          'type': 'llm_response',
+          'timestamp': DateTime.now().toIso8601String(),
+          'stop_reason': response['stop_reason'],
+          'content': response['content'],
+        });
       }
 
       // Check if we hit the tool call limit
@@ -135,6 +186,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         messages: [...state.messages, systemMessage],
         results: [...state.results, result],
         status: ChatStatus.idle,
+        llmInteractionHistory: [...state.llmInteractionHistory, ...llmHistory],
       ));
     } catch (e) {
       final errorMessage = Message(

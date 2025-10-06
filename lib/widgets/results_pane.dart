@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_state.dart';
 import '../models/command_result.dart';
+import 'llm_interaction_viewer.dart';
 
 class ResultsPane extends StatelessWidget {
   const ResultsPane({super.key});
@@ -23,13 +24,24 @@ class ResultsPane extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: state.results.length,
-          itemBuilder: (context, index) {
-            final result = state.results[index];
-            return ResultCard(result: result);
-          },
+        return Column(
+          children: [
+            // LLM Interaction Viewer at the top
+            LlmInteractionViewer(
+              interactions: state.llmInteractionHistory,
+            ),
+            // Results list
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: state.results.length,
+                itemBuilder: (context, index) {
+                  final result = state.results[index];
+                  return ResultCard(result: result);
+                },
+              ),
+            ),
+          ],
         );
       },
     );
