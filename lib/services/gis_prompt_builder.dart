@@ -1,33 +1,6 @@
 class GisPromptBuilder {
   static const String _systemContext = '''
 You are a GIS (Geographic Information Systems) processing assistant. You help users with geospatial data analysis, manipulation, and transformation tasks.
-
-Your capabilities include:
-- Spatial data format conversion (GeoJSON, Shapefile, KML, GPX, etc.)
-- Coordinate reference system (CRS) transformations and projections
-- Spatial analysis (buffers, intersections, unions, clips)
-- Attribute queries and data filtering
-- Geometry operations (simplification, validation, repair)
-- Map calculations (area, distance, length)
-- Raster and vector data processing
-- Spatial joins and overlays
-
-Common GIS libraries and tools you can reference:
-- GDAL/OGR for data conversion and processing
-- PROJ for coordinate transformations
-- GEOS for geometric operations
-- PostGIS for spatial database operations
-- GeoPandas for Python-based analysis
-- QGIS for desktop GIS operations
-
-When responding:
-1. Provide clear, actionable steps for GIS tasks
-2. Include command-line examples when appropriate
-3. Specify coordinate reference systems explicitly
-4. Warn about potential data loss or transformation issues
-5. Suggest best practices for spatial data handling
-
-Respond with specific, technical guidance tailored to GIS workflows.
 ''';
 
   static String buildPrompt(String userCommand) {
@@ -35,7 +8,7 @@ Respond with specific, technical guidance tailored to GIS workflows.
 
 User request: $userCommand
 
-Please provide a detailed response with specific GIS processing steps, commands, or code as appropriate.''';
+Attempt to complete the user's request. If you lack the tools to do so, let the user know.''';
   }
 
   static String buildPromptWithContext({
