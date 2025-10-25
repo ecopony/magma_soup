@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'bloc/chat_bloc.dart';
+import 'bloc/map_bloc.dart';
 import 'widgets/chat/chat_pane.dart';
 import 'widgets/results/results_pane.dart';
 
@@ -42,9 +44,18 @@ class MyApp extends StatelessWidget {
           foregroundColor: Color(0xFF657b83), // base00
         ),
       ),
-      home: BlocProvider(
-        create: (context) => ChatBloc(),
-        child: const MyHomePage(title: 'Command Interface'),
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider<MapBloc>(
+            create: (context) => MapBloc(),
+          ),
+          BlocProvider<ChatBloc>(
+            create: (context) => ChatBloc(
+              mapBloc: context.read<MapBloc>(),
+            ),
+          ),
+        ],
+        child: const MyHomePage(title: 'Magma Soup'),
       ),
     );
   }
@@ -61,18 +72,18 @@ class MyHomePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
       ),
-      body: Row(
+      body: const Row(
         children: [
-          const Expanded(
+          Expanded(
             flex: 1,
             child: ChatPane(),
           ),
-          const VerticalDivider(
+          VerticalDivider(
             width: 1,
             thickness: 1,
             color: Color(0xFF93a1a1), // base1
           ),
-          const Expanded(
+          Expanded(
             flex: 1,
             child: ResultsPane(),
           ),

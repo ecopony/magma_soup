@@ -1,26 +1,38 @@
 import 'package:bloc/bloc.dart';
-import '../models/message.dart';
+import 'package:flutter_map/flutter_map.dart';
+
 import '../models/command_result.dart';
+import '../models/message.dart';
 import '../services/anthropic_service.dart';
-import '../services/mcp_service.dart';
+import '../services/geo_feature_extractor.dart';
 import '../services/gis_prompt_builder.dart';
+import '../services/mcp_service.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
+import 'map_bloc.dart';
+import 'map_event.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final AnthropicService _anthropicService;
   final McpService _mcpService;
+  final GeoFeatureExtractor _geoFeatureExtractor;
+  final MapBloc _mapBloc;
 
   ChatBloc({
     AnthropicService? anthropicService,
     McpService? mcpService,
+    GeoFeatureExtractor? geoFeatureExtractor,
+    required MapBloc mapBloc,
   })  : _anthropicService = anthropicService ?? AnthropicService(),
         _mcpService = mcpService ?? McpService(),
+        _geoFeatureExtractor = geoFeatureExtractor ?? GeoFeatureExtractor(),
+        _mapBloc = mapBloc,
         super(ChatState()) {
     on<SendCommand>(_onSendCommand);
   }
 
-  Future<void> _onSendCommand(SendCommand event, Emitter<ChatState> emit) async {
+  Future<void> _onSendCommand(
+      SendCommand event, Emitter<ChatState> emit) async {
     // Add user message
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -69,6 +81,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       int toolCallCount = 0;
       const maxToolCalls = 10;
+      final newMarkers = <Marker>[];
 
       while (response['stop_reason'] == 'tool_use' &&
           toolCallCount < maxToolCalls) {
@@ -113,6 +126,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               'tool_name': toolName,
               'result': result,
             });
+
+            // Extract geographic features from tool results
+            final markers = _geoFeatureExtractor.extractMarkers(
+              toolName: toolName,
+              result: result,
+              arguments: toolInput,
+            );
+            newMarkers.addAll(markers);
           } catch (e) {
             toolResults.add({
               'type': 'tool_result',
@@ -181,6 +202,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         output: finalResponse,
         timestamp: DateTime.now(),
       );
+
+      // Send markers to MapBloc
+      if (newMarkers.isNotEmpty) {
+        _mapBloc.add(AddMarkers(newMarkers));
+      }
 
       emit(state.copyWith(
         messages: [...state.messages, systemMessage],
