@@ -1,31 +1,39 @@
 # Magma Soup
 
-A Flutter desktop application with a two-pane interface for command execution.
+A Flutter desktop application with a two-pane interface for command execution and an MCP server.
 
 ## Architecture
+
+### Flutter Application
 
 - **Flutter**: Desktop app (macOS support)
 - **State Management**: BLoC pattern using flutter_bloc
 - **Theme**: Solarized Light color scheme
 
-## Project Structure
+### Project Structure
 
 - `lib/models/` - Data models (Message, CommandResult)
 - `lib/bloc/` - BLoC implementation (ChatBloc, events, states)
 - `lib/widgets/` - UI components (ChatPane, ResultsPane)
 
-## UI Layout
+### UI Layout
 
 Two-pane split view:
 
 - **Left pane**: Chat interface for entering commands
 - **Right pane**: Display area for command results
 
-## Running
+### Running
 
 ```bash
 flutter run
 ```
+
+### MCP server
+
+Simple MCP server implemented using the TypeScript reference SDK.
+
+Provides support for some simple GIS operations.
 
 # Instructions for Claude Code
 
