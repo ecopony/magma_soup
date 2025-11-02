@@ -5,6 +5,10 @@ import { AnthropicService } from './anthropic.js';
 import { McpClient } from './mcp-client.js';
 import { GisPromptBuilder } from './gis-prompt-builder.js';
 import { GeoFeatureExtractor } from './geo-feature-extractor.js';
+import { createMessage } from '../models/message.js';
+import { createLLMHistoryEntry } from '../models/llm-history.js';
+import { createGeoFeature } from '../models/geo-feature.js';
+import { updateConversationTimestamp } from '../models/conversation.js';
 import type {
   AgenticLoopResult,
   LLMHistoryEntry,
@@ -223,5 +227,43 @@ export class AgentService {
       llmHistory,
       geoFeatures,
     };
+  }
+
+  async executeAgenticLoopWithPersistence(
+    conversationId: string,
+    userMessage: string,
+    onProgress?: (update: StreamUpdate) => void
+  ): Promise<AgenticLoopResult> {
+    // Store user message
+    const userMessageRecord = await createMessage(
+      conversationId,
+      'user',
+      userMessage
+    );
+
+    // Execute agentic loop
+    const result = await this.executeAgenticLoop(userMessage, onProgress);
+
+    // Store LLM history entries
+    for (let i = 0; i < result.llmHistory.length; i++) {
+      await createLLMHistoryEntry(userMessageRecord.id, result.llmHistory[i], i);
+    }
+
+    // Store assistant response
+    const assistantMessageRecord = await createMessage(
+      conversationId,
+      'assistant',
+      result.finalResponse
+    );
+
+    // Store geographic features
+    for (const feature of result.geoFeatures) {
+      await createGeoFeature(assistantMessageRecord.id, feature);
+    }
+
+    // Update conversation timestamp
+    await updateConversationTimestamp(conversationId);
+
+    return result;
   }
 }
