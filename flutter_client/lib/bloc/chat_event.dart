@@ -5,3 +5,15 @@ class SendCommand extends ChatEvent {
 
   SendCommand(this.command);
 }
+
+class CreateConversation extends ChatEvent {
+  final String? title;
+
+  CreateConversation({this.title});
+}
+
+class LoadConversation extends ChatEvent {
+  final String conversationId;
+
+  LoadConversation(this.conversationId);
+}

@@ -4,21 +4,24 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'bloc/chat_bloc.dart';
 import 'bloc/map_bloc.dart';
+import 'services/api_client.dart';
 import 'widgets/chat/chat_pane.dart';
 import 'widgets/results/results_pane.dart';
 
 Future<void> main() async {
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    // .env file is optional - app will use empty string for API key
-    // and show error when trying to send messages
-  }
-  runApp(const MyApp());
+  await dotenv.load(fileName: ".env");
+
+  final apiClient = ApiClient(
+    baseUrl: dotenv.env['API_SERVER_URL'] ?? 'http://localhost:3001',
+  );
+
+  runApp(MyApp(apiClient: apiClient));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ApiClient apiClient;
+
+  const MyApp({super.key, required this.apiClient});
 
   // This widget is the root of your application.
   @override
@@ -51,6 +54,7 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider<ChatBloc>(
             create: (context) => ChatBloc(
+              apiClient: apiClient,
               mapBloc: context.read<MapBloc>(),
             ),
           ),
