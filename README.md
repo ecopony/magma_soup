@@ -23,7 +23,7 @@ Magma Soup combines natural language interaction with geographic information sys
      │       └──────┐
      │              │ HTTP
      ▼              ▼
-┌─────────┐   ┌──────────┐
+┌──────────┐   ┌──────────┐
 │PostgreSQL│   │   MCP    │ GIS tools
 │ PostGIS  │   │  Server  │ (geocoding, distance, etc.)
 └──────────┘   └──────────┘
@@ -32,12 +32,14 @@ Magma Soup combines natural language interaction with geographic information sys
 ### Components
 
 1. **Flutter Client** (`flutter_client/`)
+
    - Desktop application (macOS)
    - Two-pane UI: chat + results/map
    - BLoC state management
    - Solarized Light theme
 
 2. **API Server** (`api_server/`)
+
    - Node.js + Express + TypeScript
    - Agentic loop with tool use
    - Claude Sonnet 4.5 integration
@@ -45,6 +47,7 @@ Magma Soup combines natural language interaction with geographic information sys
    - SSE streaming for real-time updates
 
 3. **MCP Server** (`mcp_server/`)
+
    - Model Context Protocol server
    - GIS tool implementations
    - TypeScript SDK
@@ -76,6 +79,7 @@ docker-compose up --build
 ```
 
 The first time you run this, Docker will:
+
 - Pull the PostGIS image
 - Build the MCP and API server images
 - Run database migrations automatically
@@ -142,6 +146,7 @@ flutter run
 ### Conversational GIS Queries
 
 Ask natural language questions about geographic data:
+
 - "What are the coordinates of San Francisco?"
 - "What's the distance between NYC and LA?"
 - "Find the address for these coordinates: 37.7749, -122.4194"
@@ -149,6 +154,7 @@ Ask natural language questions about geographic data:
 ### Real-Time Streaming
 
 Server-Sent Events (SSE) provide live updates:
+
 - Tool execution progress
 - LLM responses
 - Geographic features extracted
@@ -157,6 +163,7 @@ Server-Sent Events (SSE) provide live updates:
 ### Persistent History
 
 All conversations are stored in PostgreSQL:
+
 - Message history
 - LLM interaction traces
 - Tool calls and results
@@ -221,24 +228,28 @@ API_SERVER_PORT=3001
 ### Schema
 
 **conversations**
+
 - Stores conversation metadata
 - UUID primary key
 - Created/updated timestamps
 - Optional title and metadata JSON
 
 **messages**
+
 - User and assistant messages
 - References conversation
 - Sequential ordering
 - Content stored as JSONB
 
 **llm_history**
+
 - Detailed LLM interaction traces
 - Tool calls, results, errors
 - Sequential ordering per message
 - Debugging and analysis
 
 **geo_features**
+
 - PostGIS geometry storage
 - Extracted from tool results
 - Point, Line, Polygon support
@@ -254,6 +265,7 @@ npm run migrate
 ```
 
 Migration files are in `api_server/migrations/`:
+
 - `001_initial_schema.sql` - Core tables
 - `002_geo_features.sql` - PostGIS and spatial features
 
@@ -445,6 +457,7 @@ SELECT * FROM migrations;
 ## Contributing
 
 See individual component READMEs for detailed development instructions:
+
 - [API Server](api_server/README.md)
 - [MCP Server](mcp_server/README.md)
 - [Flutter Client](flutter_client/README.md)
