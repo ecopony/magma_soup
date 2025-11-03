@@ -12,6 +12,8 @@ import '../models/geo_feature.dart';
 import '../models/message.dart';
 import '../models/sse_event.dart';
 import '../services/api_client.dart';
+import 'agentic_trace_bloc.dart';
+import 'agentic_trace_event.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 import 'map_bloc.dart';
@@ -20,14 +22,17 @@ import 'map_event.dart';
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ApiClient _apiClient;
   final MapBloc _mapBloc;
+  final AgenticTraceBloc _agenticTraceBloc;
   final Logger _logger;
 
   ChatBloc({
     required ApiClient apiClient,
     required MapBloc mapBloc,
+    required AgenticTraceBloc agenticTraceBloc,
     Logger? logger,
   })  : _apiClient = apiClient,
         _mapBloc = mapBloc,
+        _agenticTraceBloc = agenticTraceBloc,
         _logger = logger ?? Logger(),
         super(ChatState()) {
     on<SendCommand>(_onSendCommand);
@@ -133,9 +138,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ));
 
     // Track SSE events for result
-    final llmHistory = <Map<String, dynamic>>[];
     final geoFeatures = <GeoFeature>[];
-    final newMarkers = <Marker>[];
     String? finalResponse;
 
     try {
@@ -147,14 +150,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       await for (final sseEvent in eventStream) {
         if (sseEvent is ToolCallEvent) {
-          llmHistory.add({
-            'type': 'tool_call',
-            'timestamp': sseEvent.timestamp.toIso8601String(),
-            'tool_name': sseEvent.toolName,
-            'arguments': sseEvent.arguments,
-          });
+          // Send to AgenticTraceBloc
+          _agenticTraceBloc.add(AddToolCall(
+            toolName: sseEvent.toolName,
+            arguments: sseEvent.arguments,
+            timestamp: sseEvent.timestamp,
+          ));
 
-          // Emit intermediate state with loading indicator
+          // Emit state update with current tool
           emit(state.copyWith(
             conversationId: conversationId,
             messages: currentMessages,
@@ -163,30 +166,30 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             currentToolCall: sseEvent.toolName,
           ));
         } else if (sseEvent is ToolResultEvent) {
-          llmHistory.add({
-            'type': 'tool_result',
-            'timestamp': sseEvent.timestamp.toIso8601String(),
-            'tool_name': sseEvent.toolName,
-            'result': sseEvent.result,
-          });
+          // Send to AgenticTraceBloc
+          _agenticTraceBloc.add(AddToolResult(
+            toolName: sseEvent.toolName,
+            result: sseEvent.result,
+            timestamp: sseEvent.timestamp,
+          ));
         } else if (sseEvent is ToolErrorEvent) {
-          llmHistory.add({
-            'type': 'tool_error',
-            'timestamp': sseEvent.timestamp.toIso8601String(),
-            'tool_name': sseEvent.toolName,
-            'error': sseEvent.error,
-          });
+          // Send to AgenticTraceBloc
+          _agenticTraceBloc.add(AddToolError(
+            toolName: sseEvent.toolName,
+            error: sseEvent.error,
+            timestamp: sseEvent.timestamp,
+          ));
         } else if (sseEvent is LLMResponseEvent) {
-          llmHistory.add({
-            'type': 'llm_response',
-            'timestamp': sseEvent.timestamp.toIso8601String(),
-            'content': sseEvent.content, // Keep original structure for history
-            'stop_reason': sseEvent.stopReason,
-          });
+          // Send to AgenticTraceBloc
+          _agenticTraceBloc.add(AddLLMResponse(
+            content: sseEvent.content,
+            stopReason: sseEvent.stopReason,
+            timestamp: sseEvent.timestamp,
+          ));
         } else if (sseEvent is GeoFeatureEvent) {
           geoFeatures.add(sseEvent.feature);
 
-          // Create marker for map
+          // Create marker and send to MapBloc immediately
           final marker = Marker(
             point: LatLng(sseEvent.feature.lat, sseEvent.feature.lon),
             width: 80,
@@ -197,7 +200,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               size: 40,
             ),
           );
-          newMarkers.add(marker);
+          _mapBloc.add(AddMarkers([marker]));
         } else if (sseEvent is DoneEvent) {
           finalResponse = sseEvent.finalResponse;
         } else if (sseEvent is ErrorEvent) {
@@ -221,20 +224,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         output: finalResponse ?? 'No response',
         timestamp: DateTime.now(),
         geoFeatures: geoFeatures,
-        llmHistory: llmHistory,
+        llmHistory: const [], // Empty now, trace is in AgenticTraceBloc
       );
-
-      // Send markers to MapBloc
-      if (newMarkers.isNotEmpty) {
-        _mapBloc.add(AddMarkers(newMarkers));
-      }
 
       emit(state.copyWith(
         conversationId: conversationId,
         messages: currentMessages,
         results: [...state.results, result],
         status: ChatStatus.idle,
-        llmInteractionHistory: [...state.llmInteractionHistory, ...llmHistory],
         isProcessing: false,
         currentToolCall: null,
       ));

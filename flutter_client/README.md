@@ -36,17 +36,30 @@ flutter run
 
 ```
 lib/
-  bloc/             # BLoC state management
-    chat_bloc.dart
+  bloc/                      # BLoC state management
+    chat_bloc.dart           # Chat messages and conversation flow
     chat_event.dart
     chat_state.dart
-  models/           # Data models
+    agentic_trace_bloc.dart  # LLM execution trace (tool calls/results)
+    agentic_trace_event.dart
+    agentic_trace_state.dart
+    map_bloc.dart            # Map visualization state
+    map_event.dart
+    map_state.dart
+  models/                    # Data models
     message.dart
     command_result.dart
-  widgets/          # UI components
-    chat_pane.dart
-    results_pane.dart
-  main.dart         # App entry point
+    conversation.dart
+    geo_feature.dart
+    sse_event.dart
+  services/                  # External services
+    api_client.dart          # SSE streaming from API server
+  widgets/                   # UI components
+    chat/                    # Chat interface
+    results/                 # Results display
+    map/                     # Map visualization
+    llm_interaction/         # LLM trace viewer
+  main.dart                  # App entry point
 ```
 
 ## Usage

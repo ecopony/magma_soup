@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'bloc/agentic_trace_bloc.dart';
 import 'bloc/chat_bloc.dart';
 import 'bloc/map_bloc.dart';
 import 'services/api_client.dart';
@@ -52,10 +53,14 @@ class MyApp extends StatelessWidget {
           BlocProvider<MapBloc>(
             create: (context) => MapBloc(),
           ),
+          BlocProvider<AgenticTraceBloc>(
+            create: (context) => AgenticTraceBloc(),
+          ),
           BlocProvider<ChatBloc>(
             create: (context) => ChatBloc(
               apiClient: apiClient,
               mapBloc: context.read<MapBloc>(),
+              agenticTraceBloc: context.read<AgenticTraceBloc>(),
             ),
           ),
         ],

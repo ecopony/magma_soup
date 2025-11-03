@@ -9,7 +9,6 @@ class ChatState {
   final List<CommandResult> results;
   final ChatStatus status;
   final String? errorMessage;
-  final List<Map<String, dynamic>> llmInteractionHistory;
   final bool isProcessing;
   final String? currentToolCall;
 
@@ -19,7 +18,6 @@ class ChatState {
     this.results = const [],
     this.status = ChatStatus.idle,
     this.errorMessage,
-    this.llmInteractionHistory = const [],
     this.isProcessing = false,
     this.currentToolCall,
   });
@@ -30,7 +28,6 @@ class ChatState {
     List<CommandResult>? results,
     ChatStatus? status,
     String? errorMessage,
-    List<Map<String, dynamic>>? llmInteractionHistory,
     bool? isProcessing,
     String? currentToolCall,
   }) {
@@ -40,8 +37,6 @@ class ChatState {
       results: results ?? this.results,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
-      llmInteractionHistory:
-          llmInteractionHistory ?? this.llmInteractionHistory,
       isProcessing: isProcessing ?? this.isProcessing,
       currentToolCall: currentToolCall ?? this.currentToolCall,
     );

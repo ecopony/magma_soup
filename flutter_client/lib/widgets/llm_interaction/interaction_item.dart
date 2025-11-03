@@ -1,10 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'content/user_prompt_content.dart';
+
 import 'content/llm_response_content.dart';
 import 'content/tool_call_content.dart';
-import 'content/tool_result_content.dart';
 import 'content/tool_error_content.dart';
-import 'dart:convert';
+import 'content/tool_result_content.dart';
+import 'content/user_prompt_content.dart';
 
 class InteractionItem extends StatelessWidget {
   final Map<String, dynamic> interaction;
