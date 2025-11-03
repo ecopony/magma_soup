@@ -2,6 +2,7 @@
 // ABOUTME: Handle adding/removing geographic features from the map
 
 import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 abstract class MapEvent {}
 
@@ -24,3 +25,20 @@ class AddPolygons extends MapEvent {
 }
 
 class ClearMap extends MapEvent {}
+
+class ZoomIn extends MapEvent {}
+
+class ZoomOut extends MapEvent {}
+
+class SetZoom extends MapEvent {
+  final double zoom;
+
+  SetZoom(this.zoom);
+}
+
+class UpdateMapPosition extends MapEvent {
+  final LatLng center;
+  final double zoom;
+
+  UpdateMapPosition(this.center, this.zoom);
+}
