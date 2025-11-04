@@ -42,3 +42,7 @@ class UpdateMapPosition extends MapEvent {
 
   UpdateMapPosition(this.center, this.zoom);
 }
+
+class DisableAutoFrame extends MapEvent {}
+
+class EnableAutoFrame extends MapEvent {}

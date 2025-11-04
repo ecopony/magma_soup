@@ -28,21 +28,27 @@ class MapWidget extends StatelessWidget {
                   onPositionChanged: (position, hasGesture) {
                     if (hasGesture) {
                       context.read<MapBloc>().add(
-                        UpdateMapPosition(position.center, position.zoom),
-                      );
+                            UpdateMapPosition(position.center, position.zoom),
+                          );
+                      // Disable auto-frame when user manually interacts
+                      if (state.autoFrameEnabled) {
+                        context.read<MapBloc>().add(DisableAutoFrame());
+                      }
                     }
                   },
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.magma_soup',
                   ),
                   if (state.polygons.isNotEmpty)
                     PolygonLayer(polygons: state.polygons),
                   if (state.polylines.isNotEmpty)
                     PolylineLayer(polylines: state.polylines),
-                  if (state.markers.isNotEmpty) MarkerLayer(markers: state.markers),
+                  if (state.markers.isNotEmpty)
+                    MarkerLayer(markers: state.markers),
                 ],
               ),
               Positioned(
@@ -61,6 +67,16 @@ class MapWidget extends StatelessWidget {
                       onPressed: () => context.read<MapBloc>().add(ZoomOut()),
                       child: const Icon(Icons.remove),
                     ),
+                    if (!state.autoFrameEnabled) ...[
+                      const SizedBox(height: 8),
+                      FloatingActionButton(
+                        mini: true,
+                        onPressed: () =>
+                            context.read<MapBloc>().add(EnableAutoFrame()),
+                        tooltip: 'Re-enable auto-frame',
+                        child: const Icon(Icons.center_focus_strong),
+                      ),
+                    ],
                   ],
                 ),
               ),

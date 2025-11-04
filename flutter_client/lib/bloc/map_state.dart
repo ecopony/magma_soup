@@ -11,6 +11,8 @@ class MapState {
   final MapController mapController;
   final double zoom;
   final LatLng center;
+  final bool autoFrameEnabled;
+  final LatLngBounds? conversationBounds;
 
   MapState({
     this.markers = const [],
@@ -19,6 +21,8 @@ class MapState {
     MapController? mapController,
     this.zoom = 5.0,
     this.center = const LatLng(37.7749, -122.4194), // San Francisco
+    this.autoFrameEnabled = true,
+    this.conversationBounds,
   }) : mapController = mapController ?? MapController();
 
   MapState copyWith({
@@ -28,6 +32,8 @@ class MapState {
     MapController? mapController,
     double? zoom,
     LatLng? center,
+    bool? autoFrameEnabled,
+    LatLngBounds? conversationBounds,
   }) {
     return MapState(
       markers: markers ?? this.markers,
@@ -36,6 +42,8 @@ class MapState {
       mapController: mapController ?? this.mapController,
       zoom: zoom ?? this.zoom,
       center: center ?? this.center,
+      autoFrameEnabled: autoFrameEnabled ?? this.autoFrameEnabled,
+      conversationBounds: conversationBounds ?? this.conversationBounds,
     );
   }
 }
