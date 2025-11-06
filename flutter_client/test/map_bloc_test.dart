@@ -320,6 +320,52 @@ void main() {
           expect(bounds.northEast.longitude, greaterThanOrEqualTo(-104.9903)); // Denver lng
         },
       );
+
+      blocTest<MapBloc, MapState>(
+        'EnableAutoFrame recalculates bounds to include markers added while disabled',
+        build: () {
+          return MapBloc();
+        },
+        act: (bloc) async {
+          // Add first marker with auto-frame enabled
+          bloc.add(AddMarkers([
+            Marker(
+              point: const LatLng(40.0, -74.0),
+              child: Container(),
+            ),
+          ]));
+          await Future.delayed(const Duration(milliseconds: 10));
+
+          // Disable auto-frame (simulating user zoom/pan)
+          bloc.add(DisableAutoFrame());
+          await Future.delayed(const Duration(milliseconds: 10));
+
+          // Add second marker while disabled
+          bloc.add(AddMarkers([
+            Marker(
+              point: const LatLng(45.0, -122.0),
+              child: Container(),
+            ),
+          ]));
+          await Future.delayed(const Duration(milliseconds: 10));
+
+          // Re-enable auto-frame
+          bloc.add(EnableAutoFrame());
+        },
+        verify: (bloc) {
+          // Bounds should include BOTH markers, not just the first one
+          expect(bloc.state.conversationBounds, isNotNull);
+          final bounds = bloc.state.conversationBounds!;
+
+          // Should include first marker at 40.0, -74.0
+          expect(bounds.southWest.latitude, lessThanOrEqualTo(40.0));
+          expect(bounds.northEast.longitude, greaterThanOrEqualTo(-74.0));
+
+          // Should include second marker at 45.0, -122.0
+          expect(bounds.northEast.latitude, greaterThanOrEqualTo(45.0));
+          expect(bounds.southWest.longitude, lessThanOrEqualTo(-122.0));
+        },
+      );
     });
   });
 }

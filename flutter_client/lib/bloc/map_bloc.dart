@@ -168,6 +168,14 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     ));
   }
 
+  List<LatLng> _getAllPointsFromState() {
+    return [
+      ...state.markers.map((m) => m.point),
+      ...state.polylines.expand((p) => p.points),
+      ...state.polygons.expand((p) => p.points),
+    ].toList();
+  }
+
   LatLngBounds? _calculateBoundsFromPoints(List<LatLng> points) {
     if (points.isEmpty) return null;
 
@@ -279,14 +287,17 @@ class MapBloc extends Bloc<MapEvent, MapState> {
   }
 
   void _onEnableAutoFrame(EnableAutoFrame event, Emitter<MapState> emit) {
-    // Re-fit to conversation bounds when re-enabling
+    // Recalculate bounds from all current features
+    final allPoints = _getAllPointsFromState();
+    final conversationBounds = _calculateBoundsFromPoints(allPoints);
     MapCamera? camera;
-    if (state.conversationBounds != null) {
-      camera = _fitBounds(state.conversationBounds!);
+    if (conversationBounds != null) {
+      camera = _fitBounds(conversationBounds);
     }
 
     emit(state.copyWith(
       autoFrameEnabled: true,
+      conversationBounds: conversationBounds,
       center: camera?.center ?? state.center,
       zoom: camera?.zoom ?? state.zoom,
     ));
