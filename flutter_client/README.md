@@ -6,7 +6,8 @@ A Flutter desktop application featuring a split-pane interface for command execu
 
 - **Two-pane layout**: Chat interface on the left, results display on the right
 - **Command interface**: Enter and execute commands through a conversational UI
-- **Real-time results**: View command outputs in a dedicated results pane
+- **Real-time results**: View command outputs and LLM interaction trace in dedicated pane
+- **Unified message handling**: All message types (conversation + LLM trace) in single BLoC
 - **Solarized Light theme**: Easy-on-the-eyes color scheme throughout
 
 ## Tech Stack
@@ -37,12 +38,9 @@ flutter run
 ```
 lib/
   bloc/                      # BLoC state management
-    chat_bloc.dart           # Chat messages and conversation flow
+    chat_bloc.dart           # All messages and conversation flow
     chat_event.dart
     chat_state.dart
-    agentic_trace_bloc.dart  # LLM execution trace (tool calls/results)
-    agentic_trace_event.dart
-    agentic_trace_state.dart
     map_bloc.dart            # Map visualization state
     map_event.dart
     map_state.dart

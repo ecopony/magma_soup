@@ -1,24 +1,30 @@
 // ABOUTME: Database model for messages
-// ABOUTME: Handles CRUD operations for message records with automatic sequencing
+// ABOUTME: Handles CRUD operations for all message types with automatic sequencing
 
 import { getPool } from '../config/database.js';
-import type { Message as MessageContent } from '../types/index.js';
+
+export type MessageType =
+  | 'user'
+  | 'assistant'
+  | 'user_prompt'
+  | 'llm_response'
+  | 'tool_call'
+  | 'tool_result'
+  | 'tool_error';
 
 export interface StoredMessage {
   id: string;
   conversation_id: string;
-  role: 'user' | 'assistant';
-  content: MessageContent['content'];
-  created_at: Date;
+  type: MessageType;
   sequence_number: number;
-  metadata?: Record<string, any>;
+  timestamp: Date;
+  content: Record<string, any>;
 }
 
 export async function createMessage(
   conversationId: string,
-  role: 'user' | 'assistant',
-  content: MessageContent['content'],
-  metadata?: Record<string, any>
+  type: MessageType,
+  content: Record<string, any>
 ): Promise<StoredMessage> {
   const pool = getPool();
 
@@ -30,31 +36,37 @@ export async function createMessage(
   const sequenceNumber = seqResult.rows[0].next_seq;
 
   const result = await pool.query(
-    `INSERT INTO messages (conversation_id, role, content, sequence_number, metadata)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO messages (conversation_id, type, content, sequence_number)
+     VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [conversationId, role, JSON.stringify(content), sequenceNumber, metadata ? JSON.stringify(metadata) : null]
+    [conversationId, type, JSON.stringify(content), sequenceNumber]
   );
 
   return result.rows[0];
 }
 
 export async function getConversationMessages(
-  conversationId: string
+  conversationId: string,
+  types?: MessageType[]
 ): Promise<StoredMessage[]> {
   const pool = getPool();
-  const result = await pool.query(
-    'SELECT * FROM messages WHERE conversation_id = $1 ORDER BY sequence_number ASC',
-    [conversationId]
-  );
+
+  let query = 'SELECT * FROM messages WHERE conversation_id = $1';
+  const params: any[] = [conversationId];
+
+  if (types && types.length > 0) {
+    query += ' AND type = ANY($2)';
+    params.push(types);
+  }
+
+  query += ' ORDER BY sequence_number ASC';
+
+  const result = await pool.query(query, params);
   return result.rows;
 }
 
-export async function getMessage(id: string): Promise<StoredMessage | null> {
-  const pool = getPool();
-  const result = await pool.query(
-    'SELECT * FROM messages WHERE id = $1',
-    [id]
-  );
-  return result.rows[0] || null;
+export async function getConversationHistory(
+  conversationId: string
+): Promise<StoredMessage[]> {
+  return getConversationMessages(conversationId, ['user', 'assistant']);
 }

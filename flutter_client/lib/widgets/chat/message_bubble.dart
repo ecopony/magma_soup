@@ -8,7 +8,7 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUser = message.type == MessageType.user;
+    final isUser = message.kind == MessageKind.user;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -26,7 +26,7 @@ class MessageBubble extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              message.text,
+              message.displayText,
               style: const TextStyle(
                 color: Color(0xFFfdf6e3), // base3
               ),

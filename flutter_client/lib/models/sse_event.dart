@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'geo_feature.dart';
 
 /// Events streamed from the API server during message processing.
-abstract class SSEEvent {
+sealed class SSEEvent {
   final DateTime timestamp;
 
   SSEEvent({DateTime? timestamp})
@@ -15,6 +15,8 @@ abstract class SSEEvent {
     final Map<String, dynamic> json = jsonDecode(data);
 
     switch (eventType) {
+      case 'user_prompt':
+        return UserPromptEvent.fromJson(json);
       case 'tool_call':
         return ToolCallEvent.fromJson(json);
       case 'tool_result':
@@ -35,11 +37,31 @@ abstract class SSEEvent {
   }
 }
 
+class UserPromptEvent extends SSEEvent {
+  final String prompt;
+
+  UserPromptEvent({
+    required this.prompt,
+    super.timestamp,
+  });
+
+  factory UserPromptEvent.fromJson(Map<String, dynamic> json) {
+    return UserPromptEvent(
+      prompt: json['prompt'] as String? ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'] as String)
+          : DateTime.now(),
+    );
+  }
+}
+
 class ToolCallEvent extends SSEEvent {
+  final String? toolUseId;
   final String toolName;
   final Map<String, dynamic> arguments;
 
   ToolCallEvent({
+    this.toolUseId,
     required this.toolName,
     required this.arguments,
     super.timestamp,
@@ -47,6 +69,7 @@ class ToolCallEvent extends SSEEvent {
 
   factory ToolCallEvent.fromJson(Map<String, dynamic> json) {
     return ToolCallEvent(
+      toolUseId: json['tool_use_id'] as String?,
       toolName: json['tool_name'] as String? ?? '',
       arguments: json['arguments'] != null
           ? Map<String, dynamic>.from(json['arguments'] as Map)
@@ -59,10 +82,12 @@ class ToolCallEvent extends SSEEvent {
 }
 
 class ToolResultEvent extends SSEEvent {
+  final String? toolUseId;
   final String toolName;
   final String result;
 
   ToolResultEvent({
+    this.toolUseId,
     required this.toolName,
     required this.result,
     super.timestamp,
@@ -70,6 +95,7 @@ class ToolResultEvent extends SSEEvent {
 
   factory ToolResultEvent.fromJson(Map<String, dynamic> json) {
     return ToolResultEvent(
+      toolUseId: json['tool_use_id'] as String?,
       toolName: json['tool_name'] as String? ?? '',
       result: json['result'] as String? ?? '',
       timestamp: json['timestamp'] != null
@@ -80,10 +106,12 @@ class ToolResultEvent extends SSEEvent {
 }
 
 class ToolErrorEvent extends SSEEvent {
+  final String? toolUseId;
   final String toolName;
   final String error;
 
   ToolErrorEvent({
+    this.toolUseId,
     required this.toolName,
     required this.error,
     super.timestamp,
@@ -91,6 +119,7 @@ class ToolErrorEvent extends SSEEvent {
 
   factory ToolErrorEvent.fromJson(Map<String, dynamic> json) {
     return ToolErrorEvent(
+      toolUseId: json['tool_use_id'] as String?,
       toolName: json['tool_name'] as String? ?? '',
       error: json['error'] as String? ?? '',
       timestamp: json['timestamp'] != null

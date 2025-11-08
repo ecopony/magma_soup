@@ -15,11 +15,10 @@ The API server acts as the bridge between the Flutter UI client and the MCP serv
 - Agentic loop implementation with tool use
 - Server-Sent Events (SSE) streaming for real-time progress updates
 - Geographic feature extraction from tool results
-- Integration with Anthropic Claude API
+- Integration with Anthropic Claude API with full conversation context
 - HTTP client for MCP server communication
 - PostgreSQL persistence with PostGIS spatial data support
-- Conversation history and message storage
-- LLM interaction tracking for debugging and analysis
+- Unified message storage (conversation and LLM trace in single table)
 
 ## Setup
 
@@ -90,8 +89,7 @@ npm run migrate
 
 This creates:
 - `conversations` - Conversation metadata
-- `messages` - User and assistant messages
-- `llm_history` - Detailed LLM interaction traces
+- `messages` - All message types (user, assistant, user_prompt, llm_response, tool_call, tool_result, tool_error)
 - `geo_features` - Geographic features with PostGIS geometry
 
 ## Running
@@ -184,20 +182,18 @@ Response:
   "messages": [
     {
       "id": "...",
-      "role": "user",
-      "content": "What is the distance between SF and LA?",
-      "created_at": "2024-11-02T10:01:00Z",
+      "type": "user",
+      "content": {"text": "What is the distance between SF and LA?"},
+      "timestamp": "2024-11-02T10:01:00Z",
       "sequence_number": 1,
-      "llm_history": [...],
-      "geo_features": [...]
+      "geo_features": []
     },
     {
       "id": "...",
-      "role": "assistant",
-      "content": "The distance is approximately 559 km.",
-      "created_at": "2024-11-02T10:01:30Z",
+      "type": "assistant",
+      "content": {"text": "The distance is approximately 559 km."},
+      "timestamp": "2024-11-02T10:01:30Z",
       "sequence_number": 2,
-      "llm_history": [],
       "geo_features": [...]
     }
   ]
@@ -223,6 +219,16 @@ Note: If the conversation ID doesn't exist, it will be auto-created.
 
 The `/conversations/:id/messages` endpoint streams the following events:
 
+### `user_prompt`
+
+The enhanced prompt sent to Claude (includes GIS system prompt).
+
+```json
+{
+  "prompt": "You are a GIS assistant...\n\nUser request: What is the distance between SF and LA?"
+}
+```
+
 ### `llm_response`
 
 LLM response from Claude API.
@@ -240,6 +246,7 @@ Tool execution started.
 
 ```json
 {
+  "tool_use_id": "toolu_123",
   "tool_name": "geocode_address",
   "arguments": { "address": "San Francisco" }
 }
@@ -251,6 +258,7 @@ Tool execution completed.
 
 ```json
 {
+  "tool_use_id": "toolu_123",
   "tool_name": "geocode_address",
   "result": "{\"lat\": 37.7749, \"lon\": -122.4194}"
 }
@@ -262,6 +270,7 @@ Tool execution failed.
 
 ```json
 {
+  "tool_use_id": "toolu_123",
   "tool_name": "geocode_address",
   "error": "Address not found"
 }
@@ -287,10 +296,11 @@ Conversation complete.
 ```json
 {
   "final_response": "The distance is 559 km",
-  "llm_history": [...],
   "geo_features": [...]
 }
 ```
+
+Note: LLM history is no longer sent in the `done` event as all interactions are streamed in real-time via the event types above.
 
 ### `error`
 
@@ -361,16 +371,17 @@ docker exec -it magma-postgis psql -U postgres -d magma_soup
 # Check conversations
 SELECT id, title, created_at FROM conversations;
 
-# Check messages for a conversation
-SELECT role, created_at, sequence_number
+# Check messages for a conversation (all types)
+SELECT type, timestamp, sequence_number
 FROM messages
 WHERE conversation_id = 'YOUR-CONVERSATION-ID'
 ORDER BY sequence_number;
 
-# Check LLM history
-SELECT entry_type, tool_name, timestamp
-FROM llm_history
-WHERE message_id = 'YOUR-MESSAGE-ID'
+# Check only user/assistant conversation
+SELECT type, content, timestamp
+FROM messages
+WHERE conversation_id = 'YOUR-CONVERSATION-ID'
+  AND type IN ('user', 'assistant')
 ORDER BY sequence_number;
 
 # Check geographic features
@@ -388,8 +399,7 @@ api_server/
 │   │   └── database.ts       # Database connection pool
 │   ├── models/
 │   │   ├── conversation.ts   # Conversation model
-│   │   ├── message.ts        # Message model
-│   │   ├── llm-history.ts    # LLM history model
+│   │   ├── message.ts        # Unified message model (all types)
 │   │   └── geo-feature.ts    # Geographic feature model
 │   ├── services/
 │   │   ├── anthropic.ts      # Claude API client
@@ -406,7 +416,8 @@ api_server/
 │       └── migrate.ts        # Database migration runner
 ├── migrations/
 │   ├── 001_initial_schema.sql    # Core tables
-│   └── 002_geo_features.sql      # PostGIS tables
+│   ├── 002_geo_features.sql      # PostGIS tables
+│   └── 003_unify_messages.sql    # Unified message table
 ├── dist/                     # Compiled JavaScript (generated)
 ├── package.json
 ├── tsconfig.json
@@ -519,23 +530,19 @@ docker logs magma-soup-postgis
 |-----------------|--------------------------|-------------|
 | id              | UUID                     | Primary key |
 | conversation_id | UUID                     | Foreign key to conversations |
-| role            | TEXT                     | 'user' or 'assistant' |
-| content         | JSONB                    | Message content |
-| created_at      | TIMESTAMP WITH TIME ZONE | Creation time |
-| sequence_number | INTEGER                  | Order in conversation |
-| metadata        | JSONB                    | Optional metadata |
+| type            | TEXT                     | Message type: 'user', 'assistant', 'user_prompt', 'llm_response', 'tool_call', 'tool_result', 'tool_error' |
+| sequence_number | INTEGER                  | Order in conversation (across all types) |
+| timestamp       | TIMESTAMP WITH TIME ZONE | Creation time |
+| content         | JSONB                    | Type-specific content |
 
-### llm_history
-| Column          | Type                     | Description |
-|-----------------|--------------------------|-------------|
-| id              | UUID                     | Primary key |
-| message_id      | UUID                     | Foreign key to messages |
-| entry_type      | TEXT                     | Type of entry (user_prompt, llm_response, tool_call, tool_result, tool_error) |
-| sequence_number | INTEGER                  | Order within message |
-| timestamp       | TIMESTAMP WITH TIME ZONE | Entry time |
-| content         | JSONB                    | Entry content |
-| stop_reason     | TEXT                     | Stop reason (for llm_response) |
-| tool_name       | TEXT                     | Tool name (for tool entries) |
+Content structure by type:
+- `user`: `{"text": "user message"}`
+- `assistant`: `{"text": "assistant response"}`
+- `user_prompt`: `{"prompt": "enhanced prompt with GIS context"}`
+- `llm_response`: `{"content": [...], "stop_reason": "end_turn"}`
+- `tool_call`: `{"tool_use_id": "toolu_123", "tool_name": "geocode", "arguments": {...}}`
+- `tool_result`: `{"tool_use_id": "toolu_123", "tool_name": "geocode", "result": "..."}`
+- `tool_error`: `{"tool_use_id": "toolu_123", "tool_name": "geocode", "error": "..."}`
 
 ### geo_features
 | Column       | Type                     | Description |

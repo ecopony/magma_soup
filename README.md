@@ -43,6 +43,7 @@ Magma Soup combines natural language interaction with geographic information sys
    - Node.js + Express + TypeScript
    - Agentic loop with tool use
    - Claude Sonnet 4.5 integration
+   - Full conversation history sent to LLM for context
    - PostgreSQL persistence
    - SSE streaming for real-time updates
 
@@ -54,8 +55,7 @@ Magma Soup combines natural language interaction with geographic information sys
 
 4. **Database** (PostgreSQL + PostGIS)
    - Conversation history
-   - Message storage
-   - LLM interaction tracking
+   - Unified message storage (conversation + LLM trace)
    - Geographic feature persistence
 
 ## Quick Start
@@ -164,9 +164,9 @@ Server-Sent Events (SSE) provide live updates:
 
 All conversations are stored in PostgreSQL:
 
-- Message history
-- LLM interaction traces
-- Tool calls and results
+- User/assistant conversation messages
+- Complete LLM interaction trace (prompts, responses, tool calls, results, errors)
+- All messages stored in single unified table with type discriminator
 - Geographic features with PostGIS
 
 ### Map Visualization
@@ -236,17 +236,12 @@ API_SERVER_PORT=3001
 
 **messages**
 
-- User and assistant messages
+- All message types in one table with type discriminator
+- Types: user, assistant, user_prompt, llm_response, tool_call, tool_result, tool_error
 - References conversation
-- Sequential ordering
+- Sequential ordering across all message types
 - Content stored as JSONB
-
-**llm_history**
-
-- Detailed LLM interaction traces
-- Tool calls, results, errors
-- Sequential ordering per message
-- Debugging and analysis
+- Supports both user/assistant conversation and complete LLM interaction trace
 
 **geo_features**
 
@@ -268,6 +263,7 @@ Migration files are in `api_server/migrations/`:
 
 - `001_initial_schema.sql` - Core tables
 - `002_geo_features.sql` - PostGIS and spatial features
+- `003_unify_messages.sql` - Consolidates messages and LLM history into single table
 
 ### Database Access
 

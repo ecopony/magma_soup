@@ -10,7 +10,6 @@ import {
   listConversations,
 } from '../models/conversation.js';
 import { getConversationMessages } from '../models/message.js';
-import { getMessageLLMHistory } from '../models/llm-history.js';
 import { getMessageGeoFeatures } from '../models/geo-feature.js';
 
 const router = Router();
@@ -53,8 +52,8 @@ router.get('/:id', async (req, res) => {
     const messagesWithDetails = await Promise.all(
       messages.map(async (msg) => ({
         ...msg,
-        llm_history: await getMessageLLMHistory(msg.id),
-        geo_features: await getMessageGeoFeatures(msg.id),
+        geo_features:
+          msg.type === 'assistant' ? await getMessageGeoFeatures(msg.id) : [],
       }))
     );
 
@@ -104,7 +103,6 @@ router.post('/:id/messages', async (req, res) => {
 
     stream.send('done', {
       final_response: result.finalResponse,
-      llm_history: result.llmHistory,
       geo_features: result.geoFeatures,
     });
 
