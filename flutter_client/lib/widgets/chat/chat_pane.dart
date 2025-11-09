@@ -30,13 +30,16 @@ class _ChatPaneState extends State<ChatPane> {
         Expanded(
           child: BlocBuilder<ChatBloc, ChatState>(
             builder: (context, state) {
+              final conversationMessages = state.messages
+                  .where((m) => m.isConversationMessage)
+                  .toList();
               return Stack(
                 children: [
                   ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: state.messages.length,
+                    itemCount: conversationMessages.length,
                     itemBuilder: (context, index) {
-                      final message = state.messages[index];
+                      final message = conversationMessages[index];
                       return MessageBubble(message: message);
                     },
                   ),

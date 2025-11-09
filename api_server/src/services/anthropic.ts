@@ -42,14 +42,9 @@ export class AnthropicService {
 
     if (tools && tools.length > 0) {
       requestParams.tools = tools;
-      console.log(`Calling Claude API with ${tools.length} tools available`);
-    } else {
-      console.log('Calling Claude API without tools');
     }
 
     const response = await this.client.messages.create(requestParams);
-
-    console.log(`Claude response received. Stop reason: ${response.stop_reason}`);
 
     return response;
   }

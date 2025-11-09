@@ -2,12 +2,12 @@
 // ABOUTME: Defines message formats, tool interfaces, and agent result types
 
 export interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string | ContentBlock[];
 }
 
 export interface ContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result';
+  type: "text" | "tool_use" | "tool_result";
   text?: string;
   id?: string;
   name?: string;
@@ -30,10 +30,16 @@ export interface Tool {
 }
 
 export interface LLMHistoryEntry {
-  type: 'user_prompt' | 'llm_response' | 'tool_call' | 'tool_result' | 'tool_error';
+  type:
+    | "user_prompt"
+    | "llm_response"
+    | "tool_call"
+    | "tool_result"
+    | "tool_error";
   timestamp: string;
   content?: any;
   stop_reason?: string;
+  tool_use_id?: string;
   tool_name?: string;
   arguments?: Record<string, any>;
   result?: string;
@@ -47,13 +53,19 @@ export interface AgenticLoopResult {
 }
 
 export interface GeoFeature {
-  type: 'marker';
+  type: "marker";
   lat: number;
   lon: number;
   label?: string;
 }
 
 export interface StreamUpdate {
-  type: 'tool_call' | 'tool_result' | 'tool_error' | 'llm_response' | 'geo_feature';
+  type:
+    | "user_prompt"
+    | "tool_call"
+    | "tool_result"
+    | "tool_error"
+    | "llm_response"
+    | "geo_feature";
   data: any;
 }

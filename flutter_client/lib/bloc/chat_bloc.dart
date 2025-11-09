@@ -2,18 +2,12 @@
 // ABOUTME: Consumes SSE streams from API server for real-time updates.
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:logger/logger.dart';
 
-import '../models/command_result.dart';
-import '../models/geo_feature.dart';
 import '../models/message.dart';
 import '../models/sse_event.dart';
 import '../services/api_client.dart';
-import 'agentic_trace_bloc.dart';
-import 'agentic_trace_event.dart';
+import '../services/message_decoder.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 import 'map_bloc.dart';
@@ -22,17 +16,14 @@ import 'map_event.dart';
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ApiClient _apiClient;
   final MapBloc _mapBloc;
-  final AgenticTraceBloc _agenticTraceBloc;
   final Logger _logger;
 
   ChatBloc({
     required ApiClient apiClient,
     required MapBloc mapBloc,
-    required AgenticTraceBloc agenticTraceBloc,
     Logger? logger,
   })  : _apiClient = apiClient,
         _mapBloc = mapBloc,
-        _agenticTraceBloc = agenticTraceBloc,
         _logger = logger ?? Logger(),
         super(ChatState()) {
     on<SendCommand>(_onSendCommand);
@@ -73,15 +64,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       emit(state.copyWith(status: ChatStatus.loading));
 
-      final conversation = await _apiClient.getConversation(event.conversationId);
+      final conversation =
+          await _apiClient.getConversation(event.conversationId);
 
       // Convert stored messages to UI messages
       final messages = conversation.messages.map((msg) {
         return Message(
           id: msg.id,
-          text: msg.content.toString(),
+          kind: msg.role == 'user' ? MessageKind.user : MessageKind.assistant,
+          content: TextContent(msg.content.toString()),
           timestamp: msg.createdAt,
-          type: msg.role == 'user' ? MessageType.user : MessageType.system,
         );
       }).toList();
 
@@ -122,9 +114,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     // Add user message
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      text: event.command,
+      kind: MessageKind.user,
+      content: TextContent(event.command),
       timestamp: DateTime.now(),
-      type: MessageType.user,
     );
 
     final currentMessages = List<Message>.from(state.messages);
@@ -134,11 +126,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       conversationId: conversationId,
       messages: currentMessages,
       status: ChatStatus.loading,
-      isProcessing: true,
     ));
 
-    // Track SSE events for result
-    final geoFeatures = <GeoFeature>[];
     String? finalResponse;
 
     try {
@@ -149,61 +138,36 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       );
 
       await for (final sseEvent in eventStream) {
-        if (sseEvent is ToolCallEvent) {
-          // Send to AgenticTraceBloc
-          _agenticTraceBloc.add(AddToolCall(
-            toolName: sseEvent.toolName,
-            arguments: sseEvent.arguments,
-            timestamp: sseEvent.timestamp,
-          ));
+        // Decode event to message
+        final message = MessageDecoder.decode(sseEvent);
+        if (message != null) {
+          currentMessages.add(message);
 
-          // Emit state update with current tool
-          emit(state.copyWith(
-            conversationId: conversationId,
-            messages: currentMessages,
-            status: ChatStatus.loading,
-            isProcessing: true,
-            currentToolCall: sseEvent.toolName,
-          ));
-        } else if (sseEvent is ToolResultEvent) {
-          // Send to AgenticTraceBloc
-          _agenticTraceBloc.add(AddToolResult(
-            toolName: sseEvent.toolName,
-            result: sseEvent.result,
-            timestamp: sseEvent.timestamp,
-          ));
-        } else if (sseEvent is ToolErrorEvent) {
-          // Send to AgenticTraceBloc
-          _agenticTraceBloc.add(AddToolError(
-            toolName: sseEvent.toolName,
-            error: sseEvent.error,
-            timestamp: sseEvent.timestamp,
-          ));
-        } else if (sseEvent is LLMResponseEvent) {
-          // Send to AgenticTraceBloc
-          _agenticTraceBloc.add(AddLLMResponse(
-            content: sseEvent.content,
-            stopReason: sseEvent.stopReason,
-            timestamp: sseEvent.timestamp,
-          ));
-        } else if (sseEvent is GeoFeatureEvent) {
-          geoFeatures.add(sseEvent.feature);
+          // Handle GeoFeature - send to map bloc
+          if (message.kind == MessageKind.geoFeature) {
+            final geoContent = message.content as GeoFeatureContent;
+            _mapBloc.add(AddGeoFeature(geoContent.feature));
+          }
 
-          // Create marker and send to MapBloc immediately
-          final marker = Marker(
-            point: LatLng(sseEvent.feature.lat, sseEvent.feature.lon),
-            width: 80,
-            height: 80,
-            child: const Icon(
-              Icons.location_on,
-              color: Colors.red,
-              size: 40,
-            ),
-          );
-          _mapBloc.add(AddMarkers([marker]));
-        } else if (sseEvent is DoneEvent) {
+          // Handle ToolCall - update current tool for UI feedback
+          if (message.kind == MessageKind.toolCall) {
+            final toolContent = message.content as ToolCallContent;
+            emit(state.copyWith(
+              messages: List.from(currentMessages),
+              currentToolCall: toolContent.toolName,
+            ));
+          } else {
+            emit(state.copyWith(messages: List.from(currentMessages)));
+          }
+        }
+
+        // Track final response
+        if (sseEvent is DoneEvent) {
           finalResponse = sseEvent.finalResponse;
-        } else if (sseEvent is ErrorEvent) {
+        }
+
+        // Handle error events
+        if (sseEvent is ErrorEvent) {
           throw Exception(sseEvent.message);
         }
       }
@@ -211,28 +175,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // Add assistant response
       final assistantMessage = Message(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: finalResponse ?? 'No response',
+        kind: MessageKind.assistant,
+        content: TextContent(finalResponse ?? 'No response'),
         timestamp: DateTime.now(),
-        type: MessageType.system,
       );
       currentMessages.add(assistantMessage);
-
-      // Create result
-      final result = CommandResult(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        command: event.command,
-        output: finalResponse ?? 'No response',
-        timestamp: DateTime.now(),
-        geoFeatures: geoFeatures,
-        llmHistory: const [], // Empty now, trace is in AgenticTraceBloc
-      );
 
       emit(state.copyWith(
         conversationId: conversationId,
         messages: currentMessages,
-        results: [...state.results, result],
         status: ChatStatus.idle,
-        isProcessing: false,
         currentToolCall: null,
       ));
     } catch (e) {
@@ -240,9 +192,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       final errorMessage = Message(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: 'Error: ${e.toString()}',
+        kind: MessageKind.error,
+        content: TextContent('Error: ${e.toString()}'),
         timestamp: DateTime.now(),
-        type: MessageType.system,
       );
 
       emit(state.copyWith(
@@ -250,7 +202,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         messages: [...currentMessages, errorMessage],
         status: ChatStatus.error,
         errorMessage: e.toString(),
-        isProcessing: false,
         currentToolCall: null,
       ));
     }

@@ -2,6 +2,7 @@
 // ABOUTME: Handles adding/removing geographic features and map operations
 
 import 'package:bloc/bloc.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' hide MapEvent;
 import 'package:latlong2/latlong.dart';
 
@@ -18,6 +19,7 @@ const double _minRangeForCalculation = 0.000001; // Prevent division by zero
 
 class MapBloc extends Bloc<MapEvent, MapState> {
   MapBloc() : super(MapState()) {
+    on<AddGeoFeature>(_onAddGeoFeature);
     on<AddMarkers>(_onAddMarkers);
     on<AddPolylines>(_onAddPolylines);
     on<AddPolygons>(_onAddPolygons);
@@ -28,6 +30,21 @@ class MapBloc extends Bloc<MapEvent, MapState> {
     on<UpdateMapPosition>(_onUpdateMapPosition);
     on<DisableAutoFrame>(_onDisableAutoFrame);
     on<EnableAutoFrame>(_onEnableAutoFrame);
+  }
+
+  void _onAddGeoFeature(AddGeoFeature event, Emitter<MapState> emit) {
+    final marker = Marker(
+      point: LatLng(event.feature.lat, event.feature.lon),
+      width: 80,
+      height: 80,
+      child: const Icon(
+        Icons.location_on,
+        color: Colors.red,
+        size: 40,
+      ),
+    );
+
+    add(AddMarkers([marker]));
   }
 
   void _onAddMarkers(AddMarkers event, Emitter<MapState> emit) {

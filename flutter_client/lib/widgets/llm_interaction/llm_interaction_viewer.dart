@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../bloc/agentic_trace_bloc.dart';
-import '../../bloc/agentic_trace_state.dart';
+import '../../bloc/chat_bloc.dart';
+import '../../bloc/chat_state.dart';
 import 'interaction_item.dart';
 
 class LlmInteractionViewer extends StatefulWidget {
@@ -19,9 +19,12 @@ class _LlmInteractionViewerState extends State<LlmInteractionViewer> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AgenticTraceBloc, AgenticTraceState>(
+    return BlocBuilder<ChatBloc, ChatState>(
       builder: (context, state) {
-        if (state.trace.isEmpty) {
+        final interactionMessages =
+            state.messages.where((msg) => msg.isTraceMessage).toList();
+
+        if (interactionMessages.isEmpty) {
           return const SizedBox.shrink();
         }
 
@@ -63,7 +66,7 @@ class _LlmInteractionViewerState extends State<LlmInteractionViewer> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${state.trace.length} events',
+                          '${interactionMessages.length} events',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.blue.shade900,
@@ -79,10 +82,10 @@ class _LlmInteractionViewerState extends State<LlmInteractionViewer> {
                   constraints: const BoxConstraints(maxHeight: 400),
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: state.trace.length,
+                    itemCount: interactionMessages.length,
                     itemBuilder: (context, index) {
-                      final interaction = state.trace[index];
-                      return InteractionItem(interaction: interaction);
+                      final message = interactionMessages[index];
+                      return InteractionItem(message: message);
                     },
                   ),
                 ),

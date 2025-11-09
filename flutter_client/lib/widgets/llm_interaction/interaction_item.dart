@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
+import '../../models/message.dart' as models;
 import 'content/llm_response_content.dart';
 import 'content/tool_call_content.dart';
 import 'content/tool_error_content.dart';
@@ -9,16 +8,13 @@ import 'content/tool_result_content.dart';
 import 'content/user_prompt_content.dart';
 
 class InteractionItem extends StatelessWidget {
-  final Map<String, dynamic> interaction;
+  final models.Message message;
 
-  const InteractionItem({super.key, required this.interaction});
+  const InteractionItem({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final type = interaction['type'] as String? ?? 'unknown';
-    final timestamp = interaction['timestamp'] as String? ?? '';
-
-    final styling = _getItemStyling(type);
+    final styling = _getItemStyling();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -34,114 +30,128 @@ class InteractionItem extends StatelessWidget {
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
-          _formatTimestamp(timestamp),
+          _formatTimestamp(message.timestamp),
           style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
         ),
         children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            child: _buildContent(type),
+            child: _buildContent(),
           ),
         ],
       ),
     );
   }
 
-  _ItemStyling _getItemStyling(String type) {
-    switch (type) {
-      case 'user_prompt':
+  _ItemStyling _getItemStyling() {
+    switch (message.kind) {
+      case models.MessageKind.userPrompt:
         return _ItemStyling(
           backgroundColor: Colors.blue.shade50,
           icon: Icons.person,
           title: 'User Prompt',
         );
-      case 'llm_response':
+      case models.MessageKind.llmResponse:
         return _ItemStyling(
           backgroundColor: Colors.purple.shade50,
           icon: Icons.psychology,
           title: 'LLM Response',
         );
-      case 'tool_call':
+      case models.MessageKind.toolCall:
+        final toolCall = message.content as models.ToolCallContent;
         return _ItemStyling(
           backgroundColor: Colors.orange.shade50,
           icon: Icons.build,
-          title: 'Tool Call: ${interaction['tool_name']}',
+          title: 'Tool Call: ${toolCall.toolName}',
         );
-      case 'tool_result':
+      case models.MessageKind.toolResult:
+        final toolResult = message.content as models.ToolResultContent;
         return _ItemStyling(
           backgroundColor: Colors.green.shade50,
           icon: Icons.check_circle,
-          title: 'Tool Result: ${interaction['tool_name']}',
+          title: 'Tool Result: ${toolResult.toolName}',
         );
-      case 'tool_error':
+      case models.MessageKind.toolError:
+        final toolError = message.content as models.ToolErrorContent;
         return _ItemStyling(
           backgroundColor: Colors.red.shade50,
           icon: Icons.error,
-          title: 'Tool Error: ${interaction['tool_name']}',
+          title: 'Tool Error: ${toolError.toolName}',
         );
-      default:
+      case models.MessageKind.geoFeature:
+        final geoContent = message.content as models.GeoFeatureContent;
+        return _ItemStyling(
+          backgroundColor: Colors.teal.shade50,
+          icon: Icons.location_on,
+          title:
+              'Geographic Feature: ${geoContent.feature.label ?? geoContent.feature.type}',
+        );
+      case models.MessageKind.error:
+        return _ItemStyling(
+          backgroundColor: Colors.red.shade100,
+          icon: Icons.warning,
+          title: 'Error',
+        );
+      case models.MessageKind.user:
+      case models.MessageKind.assistant:
+        // These shouldn't appear in interaction viewer
         return _ItemStyling(
           backgroundColor: Colors.grey.shade50,
           icon: Icons.info,
-          title: type,
+          title: 'Conversation Message',
         );
     }
   }
 
-  Widget _buildContent(String type) {
-    switch (type) {
-      case 'user_prompt':
-        return UserPromptContent(
-          content: interaction['content'] as String? ?? '',
-        );
-
-      case 'llm_response':
+  Widget _buildContent() {
+    switch (message.kind) {
+      case models.MessageKind.userPrompt:
+        final content = message.content as models.UserPromptContent;
+        return UserPromptContent(content: content.prompt);
+      case models.MessageKind.llmResponse:
+        final content = message.content as models.LLMResponseContent;
         return LlmResponseContent(
-          stopReason: interaction['stop_reason'] ?? '',
-          content: interaction['content'],
+          stopReason: content.stopReason ?? '',
+          content: content.content,
         );
-
-      case 'tool_call':
+      case models.MessageKind.toolCall:
+        final content = message.content as models.ToolCallContent;
         return ToolCallContent(
-          toolName: interaction['tool_name'] as String? ?? '',
-          arguments: interaction['arguments'] as Map<String, dynamic>? ?? {},
+          toolName: content.toolName,
+          arguments: content.arguments,
         );
-
-      case 'tool_result':
-        return ToolResultContent(
-          result: interaction['result'] as String? ?? '',
-        );
-
-      case 'tool_error':
-        return ToolErrorContent(
-          error: interaction['error'] as String? ?? '',
-        );
-
-      default:
+      case models.MessageKind.toolResult:
+        final content = message.content as models.ToolResultContent;
+        return ToolResultContent(result: content.result);
+      case models.MessageKind.toolError:
+        final content = message.content as models.ToolErrorContent;
+        return ToolErrorContent(error: content.error);
+      case models.MessageKind.geoFeature:
+        final content = message.content as models.GeoFeatureContent;
         return Text(
-          _formatJson(interaction),
+          'Feature: ${content.feature.label ?? content.feature.type}\n'
+          'Lat: ${content.feature.lat}, Lon: ${content.feature.lon}',
           style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
         );
+      case models.MessageKind.error:
+        final content = message.content as models.TextContent;
+        return Text(
+          content.text,
+          style: const TextStyle(fontSize: 11, color: Colors.red),
+        );
+      case models.MessageKind.user:
+      case models.MessageKind.assistant:
+        final content = message.content as models.TextContent;
+        return Text(
+          content.text,
+          style: const TextStyle(fontSize: 11),
+        );
     }
   }
 
-  String _formatTimestamp(String timestamp) {
-    try {
-      final dt = DateTime.parse(timestamp);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return timestamp;
-    }
-  }
-
-  String _formatJson(dynamic data) {
-    try {
-      const encoder = JsonEncoder.withIndent('  ');
-      return encoder.convert(data);
-    } catch (e) {
-      return data.toString();
-    }
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}';
   }
 }
 
