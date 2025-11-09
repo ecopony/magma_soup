@@ -60,6 +60,12 @@ class MessageDecoder {
         content: GeoFeatureContent(event.feature),
         timestamp: event.timestamp,
       ),
+      RemoveGeoFeatureEvent() => Message(
+        id: '${event.timestamp.millisecondsSinceEpoch}',
+        kind: MessageKind.removeGeoFeature,
+        content: RemoveGeoFeatureContent(event.featureId),
+        timestamp: event.timestamp,
+      ),
       ErrorEvent() => Message(
         id: '${event.timestamp.millisecondsSinceEpoch}',
         kind: MessageKind.error,

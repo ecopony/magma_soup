@@ -12,6 +12,7 @@ enum MessageKind {
   toolResult,        // Tool success result
   toolError,         // Tool error result
   geoFeature,        // Geographic feature data
+  removeGeoFeature,  // Remove geographic feature
   error,             // Processing error
 }
 
@@ -126,6 +127,16 @@ class GeoFeatureContent implements MessageContent {
 
   @override
   String get displayText => 'Geographic Feature: ${feature.label ?? feature.type}';
+}
+
+/// Remove geographic feature content
+class RemoveGeoFeatureContent implements MessageContent {
+  final String featureId;
+
+  RemoveGeoFeatureContent(this.featureId);
+
+  @override
+  String get displayText => 'Removed Feature: $featureId';
 }
 
 class Message {

@@ -15,6 +15,8 @@ The API server acts as the bridge between the Flutter UI client and the MCP serv
 - Agentic loop implementation with tool use
 - Server-Sent Events (SSE) streaming for real-time progress updates
 - Geographic feature extraction from tool results
+- Map-aware prompts (LLM receives current map state in system prompt)
+- Local tools (feature removal) alongside MCP tools
 - Integration with Anthropic Claude API with full conversation context
 - HTTP client for MCP server communication
 - PostgreSQL persistence with PostGIS spatial data support
@@ -282,10 +284,21 @@ Geographic feature extracted from tool result.
 
 ```json
 {
+  "id": "550e8400-e29b-41d4-a716-446655440000",
   "type": "marker",
   "lat": 37.7749295,
   "lon": -122.4194155,
   "label": "San Francisco"
+}
+```
+
+### `remove_geo_feature`
+
+Geographic feature removed from map.
+
+```json
+{
+  "feature_id": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
@@ -405,8 +418,10 @@ api_server/
 │   │   ├── anthropic.ts      # Claude API client
 │   │   ├── mcp-client.ts     # MCP server HTTP client
 │   │   ├── agent.ts          # Agentic loop with persistence
-│   │   ├── gis-prompt-builder.ts     # GIS prompt construction
+│   │   ├── gis-prompt-builder.ts     # GIS prompt construction with map context
 │   │   └── geo-feature-extractor.ts  # Geographic feature extraction
+│   ├── tools/
+│   │   └── remove-feature.ts # Local tool for removing map features
 │   ├── routes/
 │   │   └── conversations.ts  # API routes (CRUD + SSE)
 │   ├── types/
@@ -547,7 +562,7 @@ Content structure by type:
 ### geo_features
 | Column       | Type                     | Description |
 |--------------|--------------------------|-------------|
-| id           | UUID                     | Primary key |
+| id           | UUID                     | Primary key (client-provided for tracking) |
 | message_id   | UUID                     | Foreign key to messages |
 | feature_type | TEXT                     | 'marker', 'line', or 'polygon' |
 | geometry     | GEOMETRY(Geometry, 4326) | PostGIS geometry (WGS84) |

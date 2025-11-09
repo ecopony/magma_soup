@@ -14,6 +14,12 @@ class AddGeoFeature extends MapEvent {
   AddGeoFeature(this.feature);
 }
 
+class RemoveGeoFeature extends MapEvent {
+  final String featureId;
+
+  RemoveGeoFeature(this.featureId);
+}
+
 class AddMarkers extends MapEvent {
   final List<Marker> markers;
 

@@ -1,6 +1,7 @@
 // ABOUTME: Extracts geographic features from MCP tool results
 // ABOUTME: Converts geocoding and other geo tool outputs into GeoFeature objects
 
+import { randomUUID } from 'crypto';
 import type { GeoFeature } from '../types/index.js';
 
 export class GeoFeatureExtractor {
@@ -32,6 +33,7 @@ export class GeoFeatureExtractor {
 
       return [
         {
+          id: randomUUID(),
           type: 'marker',
           lat,
           lon,
