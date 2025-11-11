@@ -7,6 +7,7 @@ A Flutter desktop application featuring a split-pane interface for command execu
 - **Two-pane layout**: Chat interface on the left, results display on the right
 - **Command interface**: Enter and execute commands through a conversational UI
 - **Real-time results**: View command outputs and LLM interaction trace in dedicated pane
+- **Interactive map**: Add and remove geographic features through natural language
 - **Unified message handling**: All message types (conversation + LLM trace) in single BLoC
 - **Solarized Light theme**: Easy-on-the-eyes color scheme throughout
 
@@ -45,11 +46,11 @@ lib/
     map_event.dart
     map_state.dart
   models/                    # Data models
-    message.dart
+    message.dart             # Message types and content (including removeGeoFeature)
     command_result.dart
     conversation.dart
-    geo_feature.dart
-    sse_event.dart
+    geo_feature.dart         # GeoFeature with ID for tracking
+    sse_event.dart           # SSE events (including RemoveGeoFeatureEvent)
   services/                  # External services
     api_client.dart          # SSE streaming from API server
   widgets/                   # UI components
@@ -66,3 +67,5 @@ lib/
 2. Type commands in the chat interface (left pane)
 3. Press Enter or click the send button
 4. View results in the results pane (right pane)
+5. Geographic features appear automatically on the map when added
+6. Features can be removed by name (e.g., "Remove Portland from the map")

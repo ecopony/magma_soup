@@ -21,12 +21,12 @@ export async function createGeoFeature(
 
   // Convert lat/lon to PostGIS Point geometry
   const result = await pool.query(
-    `INSERT INTO geo_features (message_id, feature_type, geometry, properties)
-     VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5)
+    `INSERT INTO geo_features (id, message_id, feature_type, geometry, properties)
+     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6)
      RETURNING id, message_id, feature_type,
                ST_AsGeoJSON(geometry)::json as geometry,
                properties, created_at`,
-    [messageId, feature.type, feature.lon, feature.lat, JSON.stringify({ label: feature.label })]
+    [feature.id, messageId, feature.type, feature.lon, feature.lat, JSON.stringify({ label: feature.label })]
   );
 
   return result.rows[0];
@@ -43,6 +43,23 @@ export async function getMessageGeoFeatures(
      FROM geo_features
      WHERE message_id = $1`,
     [messageId]
+  );
+  return result.rows;
+}
+
+export async function getConversationGeoFeatures(
+  conversationId: string
+): Promise<StoredGeoFeature[]> {
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT gf.id, gf.message_id, gf.feature_type,
+            ST_AsGeoJSON(gf.geometry)::json as geometry,
+            gf.properties, gf.created_at
+     FROM geo_features gf
+     JOIN messages m ON gf.message_id = m.id
+     WHERE m.conversation_id = $1
+     ORDER BY gf.created_at`,
+    [conversationId]
   );
   return result.rows;
 }

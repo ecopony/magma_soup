@@ -44,6 +44,8 @@ Magma Soup combines natural language interaction with geographic information sys
    - Agentic loop with tool use
    - Claude Sonnet 4.5 integration
    - Full conversation history sent to LLM for context
+   - Map-aware prompts (LLM sees current features)
+   - Local tools (feature removal) and MCP tools
    - PostgreSQL persistence
    - SSE streaming for real-time updates
 
@@ -150,6 +152,8 @@ Ask natural language questions about geographic data:
 - "What are the coordinates of San Francisco?"
 - "What's the distance between NYC and LA?"
 - "Find the address for these coordinates: 37.7749, -122.4194"
+- "Add Portland to the map"
+- "Remove San Francisco from the map"
 
 ### Real-Time Streaming
 
@@ -171,7 +175,7 @@ All conversations are stored in PostgreSQL:
 
 ### Map Visualization
 
-Geographic features are automatically extracted and displayed on an interactive map.
+Geographic features are automatically extracted and displayed on an interactive map. Features can be explicitly added or removed through natural language commands. The LLM is aware of all features currently on the map and can reference them in responses.
 
 ## API Endpoints
 
@@ -380,10 +384,17 @@ magma_soup/
 
 ### Adding New GIS Tools
 
+**MCP Tools** (remote, via MCP server):
 1. Implement tool in `mcp_server/src/tools/`
 2. Register in `mcp_server/src/index.ts`
 3. Update prompt in `api_server/src/services/gis-prompt-builder.ts`
 4. Add feature extraction in `api_server/src/services/geo-feature-extractor.ts`
+
+**Local Tools** (API server-side):
+1. Implement tool in `api_server/src/tools/`
+2. Register in `api_server/src/services/agent.ts` (localTools map)
+3. Tool has direct access to database and conversation context
+4. Example: `remove-feature.ts` for removing map features
 
 ### Database Migrations
 

@@ -27,6 +27,8 @@ sealed class SSEEvent {
         return LLMResponseEvent.fromJson(json);
       case 'geo_feature':
         return GeoFeatureEvent.fromJson(json);
+      case 'remove_geo_feature':
+        return RemoveGeoFeatureEvent.fromJson(json);
       case 'done':
         return DoneEvent.fromJson(json);
       case 'error':
@@ -178,6 +180,24 @@ class GeoFeatureEvent extends SSEEvent {
     // The geo_feature event data IS the feature itself, not wrapped
     return GeoFeatureEvent(
       feature: GeoFeature.fromJson(json),
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'] as String)
+          : DateTime.now(),
+    );
+  }
+}
+
+class RemoveGeoFeatureEvent extends SSEEvent {
+  final String featureId;
+
+  RemoveGeoFeatureEvent({
+    required this.featureId,
+    super.timestamp,
+  });
+
+  factory RemoveGeoFeatureEvent.fromJson(Map<String, dynamic> json) {
+    return RemoveGeoFeatureEvent(
+      featureId: json['feature_id'] as String,
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'] as String)
           : DateTime.now(),

@@ -53,6 +53,7 @@ export interface AgenticLoopResult {
 }
 
 export interface GeoFeature {
+  id: string;
   type: "marker";
   lat: number;
   lon: number;
@@ -66,6 +67,7 @@ export interface StreamUpdate {
     | "tool_result"
     | "tool_error"
     | "llm_response"
-    | "geo_feature";
+    | "geo_feature"
+    | "remove_geo_feature";
   data: any;
 }

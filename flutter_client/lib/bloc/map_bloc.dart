@@ -20,6 +20,7 @@ const double _minRangeForCalculation = 0.000001; // Prevent division by zero
 class MapBloc extends Bloc<MapEvent, MapState> {
   MapBloc() : super(MapState()) {
     on<AddGeoFeature>(_onAddGeoFeature);
+    on<RemoveGeoFeature>(_onRemoveGeoFeature);
     on<AddMarkers>(_onAddMarkers);
     on<AddPolylines>(_onAddPolylines);
     on<AddPolygons>(_onAddPolygons);
@@ -34,6 +35,7 @@ class MapBloc extends Bloc<MapEvent, MapState> {
 
   void _onAddGeoFeature(AddGeoFeature event, Emitter<MapState> emit) {
     final marker = Marker(
+      key: ValueKey(event.feature.id),
       point: LatLng(event.feature.lat, event.feature.lon),
       width: 80,
       height: 80,
@@ -44,7 +46,33 @@ class MapBloc extends Bloc<MapEvent, MapState> {
       ),
     );
 
-    add(AddMarkers([marker]));
+    final updatedMarkers = [...state.markers, marker];
+    final allPoints = updatedMarkers.map((m) => m.point).toList();
+    final newPoints = [marker.point];
+
+    _handleAutoFrame(
+      emit: emit,
+      hasNewFeatures: true,
+      allPoints: allPoints,
+      newPoints: newPoints,
+      updateState: (conversationBounds, camera) => state.copyWith(
+        markers: updatedMarkers,
+        conversationBounds: conversationBounds,
+        center: camera?.center ?? state.center,
+        zoom: camera?.zoom ?? state.zoom,
+      ),
+      fallbackState: state.copyWith(
+        markers: updatedMarkers,
+      ),
+    );
+  }
+
+  void _onRemoveGeoFeature(RemoveGeoFeature event, Emitter<MapState> emit) {
+    final updatedMarkers = state.markers
+        .where((m) => m.key != ValueKey(event.featureId))
+        .toList();
+
+    emit(state.copyWith(markers: updatedMarkers));
   }
 
   void _onAddMarkers(AddMarkers event, Emitter<MapState> emit) {

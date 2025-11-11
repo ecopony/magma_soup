@@ -143,10 +143,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         if (message != null) {
           currentMessages.add(message);
 
-          // Handle GeoFeature - send to map bloc
+          // Handle map updates based on message kind
           if (message.kind == MessageKind.geoFeature) {
             final geoContent = message.content as GeoFeatureContent;
             _mapBloc.add(AddGeoFeature(geoContent.feature));
+          } else if (message.kind == MessageKind.removeGeoFeature) {
+            final removeContent = message.content as RemoveGeoFeatureContent;
+            _mapBloc.add(RemoveGeoFeature(removeContent.featureId));
           }
 
           // Handle ToolCall - update current tool for UI feedback

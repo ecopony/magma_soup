@@ -87,6 +87,12 @@ class InteractionItem extends StatelessWidget {
           title:
               'Geographic Feature: ${geoContent.feature.label ?? geoContent.feature.type}',
         );
+      case models.MessageKind.removeGeoFeature:
+        return _ItemStyling(
+          backgroundColor: Colors.orange.shade50,
+          icon: Icons.delete_outline,
+          title: 'Remove Geographic Feature',
+        );
       case models.MessageKind.error:
         return _ItemStyling(
           backgroundColor: Colors.red.shade100,
@@ -132,6 +138,12 @@ class InteractionItem extends StatelessWidget {
         return Text(
           'Feature: ${content.feature.label ?? content.feature.type}\n'
           'Lat: ${content.feature.lat}, Lon: ${content.feature.lon}',
+          style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+        );
+      case models.MessageKind.removeGeoFeature:
+        final content = message.content as models.RemoveGeoFeatureContent;
+        return Text(
+          'Removed feature ID: ${content.featureId}',
           style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
         );
       case models.MessageKind.error:

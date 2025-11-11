@@ -1,27 +1,37 @@
 // ABOUTME: Agent service implementing the agentic loop with tool use
 // ABOUTME: Orchestrates Claude API calls, tool execution, and result streaming
 
-import { AnthropicService } from "./anthropic.js";
-import { McpClient } from "./mcp-client.js";
-import { GisPromptBuilder } from "./gis-prompt-builder.js";
-import { GeoFeatureExtractor } from "./geo-feature-extractor.js";
-import { createMessage, getConversationHistory } from "../models/message.js";
-import { createGeoFeature } from "../models/geo-feature.js";
 import { updateConversationTimestamp } from "../models/conversation.js";
+import {
+  createGeoFeature,
+  getConversationGeoFeatures,
+} from "../models/geo-feature.js";
+import { createMessage, getConversationHistory } from "../models/message.js";
 import type {
   AgenticLoopResult,
-  LLMHistoryEntry,
-  GeoFeature,
-  StreamUpdate,
   ContentBlock,
+  GeoFeature,
+  LLMHistoryEntry,
   Message,
+  StreamUpdate,
 } from "../types/index.js";
+import { AnthropicService } from "./anthropic.js";
+import { GeoFeatureExtractor } from "./geo-feature-extractor.js";
+import { GisPromptBuilder } from "./gis-prompt-builder.js";
+import { McpClient } from "./mcp-client.js";
+import {
+  removeFeatureTool,
+  handleRemoveFeature,
+} from "../tools/remove-feature.js";
 
 export class AgentService {
   private anthropicService: AnthropicService;
   private mcpClient: McpClient;
   private geoFeatureExtractor: GeoFeatureExtractor;
   private maxToolCalls = 10;
+  private localTools = new Map<string, any>([
+    [removeFeatureTool.name, { definition: removeFeatureTool, handler: handleRemoveFeature }],
+  ]);
 
   constructor(anthropicApiKey: string, mcpServerUrl: string) {
     this.anthropicService = new AnthropicService(anthropicApiKey);
@@ -34,11 +44,16 @@ export class AgentService {
     onProgress?: (update: StreamUpdate) => void,
     previousConversationHistory?: Message[]
   ): Promise<AgenticLoopResult> {
-    // Build prompt with GIS context
-    const prompt = GisPromptBuilder.buildPrompt(userMessage);
+    // userMessage may already be a full prompt (from executeAgenticLoopWithPersistence)
+    // or just a plain user message. Use as-is since it's already formatted.
+    const prompt = userMessage;
 
-    // Get MCP tools
-    const tools = await this.mcpClient.getToolsForAnthropic();
+    // Get MCP tools and merge with local tools
+    const mcpTools = await this.mcpClient.getToolsForAnthropic();
+    const localToolDefinitions = Array.from(this.localTools.values()).map(
+      (t) => t.definition
+    );
+    const tools = [...mcpTools, ...localToolDefinitions];
 
     // Build conversation history, including previous messages if provided
     const conversationHistory: Message[] = [
@@ -115,7 +130,16 @@ export class AgentService {
         }
 
         try {
-          const result = await this.mcpClient.callTool(toolName, toolInput);
+          let result: string;
+
+          // Check if this is a local tool
+          if (this.localTools.has(toolName)) {
+            const localTool = this.localTools.get(toolName);
+            result = await localTool.handler(toolInput);
+          } else {
+            // Call MCP tool
+            result = await this.mcpClient.callTool(toolName, toolInput);
+          }
 
           toolResults.push({
             type: "tool_result",
@@ -145,6 +169,23 @@ export class AgentService {
               type: "tool_result",
               data: { tool_use_id: toolUseId, tool_name: toolName, result },
             });
+          }
+
+          // Check if this was a successful removal
+          if (toolName === "remove_map_feature") {
+            try {
+              const parsed = JSON.parse(result);
+              if (parsed.success && parsed.removed_feature_id) {
+                if (onProgress) {
+                  onProgress({
+                    type: "remove_geo_feature",
+                    data: { feature_id: parsed.removed_feature_id },
+                  });
+                }
+              }
+            } catch (e) {
+              // Malformed JSON response, ignore
+            }
           }
 
           // Extract geographic features from tool results
@@ -274,12 +315,22 @@ export class AgentService {
         }
       );
 
+      // Load existing features for context
+      const existingFeatures = await getConversationGeoFeatures(conversationId);
+
       // Store user message
       await createMessage(conversationId, "user", { text: userMessage });
 
+      // Build prompt with map context
+      const prompt = GisPromptBuilder.buildPromptWithMapContext(
+        conversationId,
+        userMessage,
+        existingFeatures
+      );
+
       // Execute agentic loop with previous context
       const result = await this.executeAgenticLoop(
-        userMessage,
+        prompt,
         onProgress,
         previousConversationHistory
       );
