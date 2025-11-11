@@ -73,4 +73,20 @@ export class AnthropicService {
         input: c.input,
       }));
   }
+
+  extractUsage(response: any): { input_tokens: number; output_tokens: number } {
+    const usage = response.usage || {};
+
+    // Count all input token types (regular, cache creation, cache read)
+    const inputTokens = usage.input_tokens || 0;
+    const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+    const cacheReadTokens = usage.cache_read_input_tokens || 0;
+
+    console.log(`[Token Debug] Input: ${inputTokens}, Cache Creation: ${cacheCreationTokens}, Cache Read: ${cacheReadTokens}, Output: ${usage.output_tokens || 0}`);
+
+    return {
+      input_tokens: inputTokens + cacheCreationTokens + cacheReadTokens,
+      output_tokens: usage.output_tokens || 0,
+    };
+  }
 }

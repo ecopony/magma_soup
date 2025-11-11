@@ -50,6 +50,13 @@ export interface AgenticLoopResult {
   finalResponse: string;
   llmHistory: LLMHistoryEntry[];
   geoFeatures: GeoFeature[];
+  tokenUsage?: {
+    apiCalls: number;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    estimatedCost: number;
+  };
 }
 
 export interface GeoFeature {

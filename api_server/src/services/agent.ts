@@ -67,6 +67,16 @@ export class AgentService {
       conversationHistory,
     });
 
+    // Track token usage across all API calls
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let apiCallCount = 1;
+
+    // Extract usage from initial response
+    const initialUsage = this.anthropicService.extractUsage(response);
+    totalInputTokens += initialUsage.input_tokens;
+    totalOutputTokens += initialUsage.output_tokens;
+
     // Track full LLM interaction for debugging/display
     const llmHistory: LLMHistoryEntry[] = [
       {
@@ -256,6 +266,12 @@ export class AgentService {
         conversationHistory,
       });
 
+      // Track token usage from this API call
+      apiCallCount++;
+      const usage = this.anthropicService.extractUsage(response);
+      totalInputTokens += usage.input_tokens;
+      totalOutputTokens += usage.output_tokens;
+
       // Track subsequent LLM response
       llmHistory.push({
         type: "llm_response",
@@ -286,11 +302,38 @@ export class AgentService {
     // Extract final text response
     const finalResponse = this.anthropicService.extractTextResponse(response);
 
+    // Log token usage summary
+    const totalTokens = totalInputTokens + totalOutputTokens;
+    const estimatedCost = this.calculateCost(totalInputTokens, totalOutputTokens);
+
+    console.log('\n=== Token Usage Summary ===');
+    console.log(`API calls: ${apiCallCount}`);
+    console.log(`Input tokens: ${totalInputTokens.toLocaleString()}`);
+    console.log(`Output tokens: ${totalOutputTokens.toLocaleString()}`);
+    console.log(`Total tokens: ${totalTokens.toLocaleString()}`);
+    console.log(`Estimated cost: $${estimatedCost.toFixed(4)}`);
+    console.log('===========================\n');
+
     return {
       finalResponse,
       llmHistory,
       geoFeatures,
+      tokenUsage: {
+        apiCalls: apiCallCount,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens,
+        estimatedCost,
+      },
     };
+  }
+
+  private calculateCost(inputTokens: number, outputTokens: number): number {
+    // Claude Sonnet 4.5 pricing (as of the model we're using)
+    // $3 per million input tokens, $15 per million output tokens
+    const inputCost = (inputTokens / 1_000_000) * 3;
+    const outputCost = (outputTokens / 1_000_000) * 15;
+    return inputCost + outputCost;
   }
 
   async executeAgenticLoopWithPersistence(
