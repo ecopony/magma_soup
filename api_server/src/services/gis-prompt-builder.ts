@@ -14,6 +14,13 @@ export class GisPromptBuilder {
 
     If a user asks for a feature to be added to the map you only need to geolocate it. That is
     enough to get it mapped.
+
+    You have access to additional skills that can be activated using the activate_skill tool.
+    Available skills:
+    - database: Tools for managing geographic features stored in the conversation (e.g., removing features from the map)
+
+    When you need functionality that isn't available in your current tools, check if activating
+    a skill would provide the needed capability.
     `;
 
   static buildPromptWithMapContext(

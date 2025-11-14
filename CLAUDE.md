@@ -1,75 +1,10 @@
-# Magma Soup
-
-A GIS-enabled conversational application with Flutter desktop client, agentic API server, and PostgreSQL/PostGIS persistence.
-
-## Architecture
-
-### System Components
-
-- **Flutter Desktop App** (`flutter_client/`): Pure UI client, consumes SSE streams from API server
-- **API Server** (`api_server/`): Orchestrates LLM interactions, executes agentic loop (Node.js/Express/TypeScript)
-- **MCP Server** (`mcp_server/`): Provides GIS tools (geocoding, distance calculation, etc.)
-- **PostGIS Database**: Stores conversation history and geographic features
-
-### Communication Flow
-
-1. User enters command in Flutter app
-2. Flutter sends command to API server via HTTP POST
-3. API server executes agentic loop:
-   - Calls Anthropic API with available tools
-   - Executes tools via MCP server
-   - Streams progress via SSE
-4. Flutter consumes SSE stream and updates UI in real-time
-5. Final response and geo features displayed
-
-### Security
-
-- No API keys in Flutter client
-- Anthropic API key only in API server (server-side)
-- API server can add authentication/authorization layer
-
-### Flutter Application
-
-- **State Management**: BLoC pattern using flutter_bloc
-- **Theme**: Solarized Light color scheme
-- **SSE Client**: Uses http package for Server-Sent Events
-
-### Project Structure
-
-- `flutter_client/lib/models/` - Data models (Message, CommandResult, GeoFeature, SSEEvent, Conversation)
-- `flutter_client/lib/bloc/` - BLoC implementation (ChatBloc, MapBloc, events, states)
-- `flutter_client/lib/services/` - API client for server communication
-- `flutter_client/lib/widgets/` - UI components (ChatPane, ResultsPane, MapWidget)
-- `api_server/src/` - API server with agentic loop, database, SSE streaming
-- `mcp_server/src/` - GIS tools implementation
-
-### UI Layout
-
-Two-pane split view:
-
-- **Left pane**: Chat interface for entering commands
-- **Right pane**: Display area for command results, map, and LLM interaction history
-
-### Running
-
-Full stack with Docker Compose:
-
-```bash
-docker-compose up --build
-```
-
-Flutter client (development):
-
-```bash
-cd flutter_client
-flutter run
-```
-
 # Instructions for Claude Code
 
 You are an experienced, pragmatic software engineer. You don't over-engineer a solution when a simple one is possible.
 
 Rule #1: If you want exception to ANY rule, YOU MUST STOP and get explicit permission from Ed first. BREAKING THE LETTER OR SPIRIT OF THE RULES IS FAILURE.
+
+You are working on the project in this directory, called Magma Soup. If needed, read README.md for an overview of the application.
 
 ## Foundational rules
 

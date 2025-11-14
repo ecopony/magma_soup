@@ -9,6 +9,7 @@ export interface Conversation {
   updated_at: Date;
   title?: string;
   metadata?: Record<string, any>;
+  active_skills?: string[];
 }
 
 export async function createConversation(
@@ -52,4 +53,26 @@ export async function listConversations(
     [limit, offset]
   );
   return result.rows;
+}
+
+export async function getConversationSkills(id: string): Promise<string[]> {
+  const pool = getPool();
+  const result = await pool.query(
+    'SELECT active_skills FROM conversations WHERE id = $1',
+    [id]
+  );
+  return result.rows[0]?.active_skills || [];
+}
+
+export async function addConversationSkill(
+  id: string,
+  skillName: string
+): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `UPDATE conversations
+     SET active_skills = array_append(COALESCE(active_skills, '{}'), $2)
+     WHERE id = $1 AND NOT ($2 = ANY(COALESCE(active_skills, '{}')))`,
+    [id, skillName]
+  );
 }

@@ -1,7 +1,7 @@
 // ABOUTME: Agent service implementing the agentic loop with tool use
 // ABOUTME: Orchestrates Claude API calls, tool execution, and result streaming
 
-import { updateConversationTimestamp } from "../models/conversation.js";
+import { updateConversationTimestamp, getConversationSkills } from "../models/conversation.js";
 import {
   createGeoFeature,
   getConversationGeoFeatures,
@@ -19,41 +19,56 @@ import { AnthropicService } from "./anthropic.js";
 import { GeoFeatureExtractor } from "./geo-feature-extractor.js";
 import { GisPromptBuilder } from "./gis-prompt-builder.js";
 import { McpClient } from "./mcp-client.js";
-import {
-  removeFeatureTool,
-  handleRemoveFeature,
-} from "../tools/remove-feature.js";
+import { SkillRegistry } from "./skill-registry.js";
+import { databaseSkill } from "../skills/database.js";
 
 export class AgentService {
   private anthropicService: AnthropicService;
   private mcpClient: McpClient;
+  private skillRegistry: SkillRegistry;
   private geoFeatureExtractor: GeoFeatureExtractor;
   private maxToolCalls = 10;
-  private localTools = new Map<string, any>([
-    [removeFeatureTool.name, { definition: removeFeatureTool, handler: handleRemoveFeature }],
-  ]);
 
   constructor(anthropicApiKey: string, mcpServerUrl: string) {
     this.anthropicService = new AnthropicService(anthropicApiKey);
     this.mcpClient = new McpClient(mcpServerUrl);
+    this.skillRegistry = new SkillRegistry();
+    this.skillRegistry.register(databaseSkill);
+    this.skillRegistry.initialize();
     this.geoFeatureExtractor = new GeoFeatureExtractor();
   }
 
   async executeAgenticLoop(
     userMessage: string,
+    conversationId: string,
     onProgress?: (update: StreamUpdate) => void,
     previousConversationHistory?: Message[]
   ): Promise<AgenticLoopResult> {
+    // Track API usage metrics
+    let apiCallCount = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalCacheCreationTokens = 0;
+    let totalCacheReadTokens = 0;
+
     // userMessage may already be a full prompt (from executeAgenticLoopWithPersistence)
     // or just a plain user message. Use as-is since it's already formatted.
     const prompt = userMessage;
 
-    // Get MCP tools and merge with local tools
+    // Load active skills for this conversation
+    const activeSkills = await getConversationSkills(conversationId);
+
+    // Get MCP tools (geospatial tools)
     const mcpTools = await this.mcpClient.getToolsForAnthropic();
-    const localToolDefinitions = Array.from(this.localTools.values()).map(
-      (t) => t.definition
-    );
-    const tools = [...mcpTools, ...localToolDefinitions];
+
+    // Get skill tools (only active ones)
+    const skillTools = this.skillRegistry.getToolsForSkills(activeSkills);
+
+    // Add the activate_skill meta-tool
+    const activateSkillTool = this.skillRegistry.getActivateSkillTool(conversationId);
+
+    // Merge all tools
+    const tools = [...mcpTools, ...skillTools, activateSkillTool];
 
     // Build conversation history, including previous messages if provided
     const conversationHistory: Message[] = [
@@ -66,6 +81,15 @@ export class AgentService {
       tools,
       conversationHistory,
     });
+
+    // Track usage from this API call
+    apiCallCount++;
+    if (response.usage) {
+      totalInputTokens += response.usage.input_tokens || 0;
+      totalOutputTokens += response.usage.output_tokens || 0;
+      totalCacheCreationTokens += response.usage.cache_creation_input_tokens || 0;
+      totalCacheReadTokens += response.usage.cache_read_input_tokens || 0;
+    }
 
     // Track full LLM interaction for debugging/display
     const llmHistory: LLMHistoryEntry[] = [
@@ -132,12 +156,15 @@ export class AgentService {
         try {
           let result: string;
 
-          // Check if this is a local tool
-          if (this.localTools.has(toolName)) {
-            const localTool = this.localTools.get(toolName);
-            result = await localTool.handler(toolInput);
+          // Check skills first
+          const skillHandler = this.skillRegistry.findHandler(toolName);
+          if (skillHandler) {
+            result = await skillHandler(toolInput);
+          } else if (toolName === 'activate_skill') {
+            const activateSkillTool = this.skillRegistry.getActivateSkillTool(conversationId);
+            result = await activateSkillTool.handler(toolInput);
           } else {
-            // Call MCP tool
+            // Fall back to MCP
             result = await this.mcpClient.callTool(toolName, toolInput);
           }
 
@@ -172,7 +199,7 @@ export class AgentService {
           }
 
           // Check if this was a successful removal
-          if (toolName === "remove_map_feature") {
+          if (toolName === "database__remove_feature") {
             try {
               const parsed = JSON.parse(result);
               if (parsed.success && parsed.removed_feature_id) {
@@ -256,6 +283,15 @@ export class AgentService {
         conversationHistory,
       });
 
+      // Track usage from this API call
+      apiCallCount++;
+      if (response.usage) {
+        totalInputTokens += response.usage.input_tokens || 0;
+        totalOutputTokens += response.usage.output_tokens || 0;
+        totalCacheCreationTokens += response.usage.cache_creation_input_tokens || 0;
+        totalCacheReadTokens += response.usage.cache_read_input_tokens || 0;
+      }
+
       // Track subsequent LLM response
       llmHistory.push({
         type: "llm_response",
@@ -290,6 +326,13 @@ export class AgentService {
       finalResponse,
       llmHistory,
       geoFeatures,
+      usage: {
+        apiCallCount,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        cacheCreationTokens: totalCacheCreationTokens,
+        cacheReadTokens: totalCacheReadTokens,
+      },
     };
   }
 
@@ -298,6 +341,8 @@ export class AgentService {
     userMessage: string,
     onProgress?: (update: StreamUpdate) => void
   ): Promise<AgenticLoopResult> {
+    const startTime = Date.now();
+
     try {
       // Load previous conversation history (user/assistant messages only)
       const previousMessages = await getConversationHistory(conversationId);
@@ -331,6 +376,7 @@ export class AgentService {
       // Execute agentic loop with previous context
       const result = await this.executeAgenticLoop(
         prompt,
+        conversationId,
         onProgress,
         previousConversationHistory
       );
@@ -394,6 +440,20 @@ export class AgentService {
 
       // Update conversation timestamp
       await updateConversationTimestamp(conversationId);
+
+      // Log request summary
+      const duration = Date.now() - startTime;
+      const totalTokens = result.usage.inputTokens + result.usage.outputTokens;
+      const cacheTokens = result.usage.cacheCreationTokens + result.usage.cacheReadTokens;
+
+      console.log('='.repeat(60));
+      console.log(`Request completed in ${(duration / 1000).toFixed(2)}s`);
+      console.log(`API calls: ${result.usage.apiCallCount}`);
+      console.log(`Tokens: ${totalTokens.toLocaleString()} (input: ${result.usage.inputTokens.toLocaleString()}, output: ${result.usage.outputTokens.toLocaleString()})`);
+      if (cacheTokens > 0) {
+        console.log(`Cache tokens: ${cacheTokens.toLocaleString()} (creation: ${result.usage.cacheCreationTokens.toLocaleString()}, read: ${result.usage.cacheReadTokens.toLocaleString()})`);
+      }
+      console.log('='.repeat(60));
 
       return result;
     } catch (error) {
