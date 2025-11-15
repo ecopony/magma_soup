@@ -1,7 +1,7 @@
 // ABOUTME: MCP server HTTP client for tool discovery and execution
 // ABOUTME: Interfaces with the GIS tools MCP server on port 3000
 
-import type { Tool } from '../types/index.js';
+import Anthropic from '@anthropic-ai/sdk';
 
 export class McpClient {
   private baseUrl: string;
@@ -63,7 +63,7 @@ export class McpClient {
     throw new Error('Unexpected tool response format');
   }
 
-  async getToolsForAnthropic(): Promise<Tool[]> {
+  async getToolsForAnthropic(): Promise<Anthropic.Tool[]> {
     const tools = await this.listTools();
     return tools.map((tool) => ({
       name: tool.name,

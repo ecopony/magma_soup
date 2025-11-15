@@ -1,6 +1,7 @@
 // ABOUTME: Agent service implementing the agentic loop with tool use
 // ABOUTME: Orchestrates Claude API calls, tool execution, and result streaming
 
+import Anthropic from "@anthropic-ai/sdk";
 import { updateConversationTimestamp } from "../models/conversation.js";
 import {
   createGeoFeature,
@@ -24,12 +25,17 @@ import {
   handleRemoveFeature,
 } from "../tools/remove-feature.js";
 
+interface LocalTool {
+  definition: Anthropic.Tool;
+  handler: (input: any) => Promise<string>;
+}
+
 export class AgentService {
   private anthropicService: AnthropicService;
   private mcpClient: McpClient;
   private geoFeatureExtractor: GeoFeatureExtractor;
   private maxToolCalls = 10;
-  private localTools = new Map<string, any>([
+  private localTools = new Map<string, LocalTool>([
     [removeFeatureTool.name, { definition: removeFeatureTool, handler: handleRemoveFeature }],
   ]);
 
@@ -133,8 +139,8 @@ export class AgentService {
           let result: string;
 
           // Check if this is a local tool
-          if (this.localTools.has(toolName)) {
-            const localTool = this.localTools.get(toolName);
+          const localTool = this.localTools.get(toolName);
+          if (localTool) {
             result = await localTool.handler(toolInput);
           } else {
             // Call MCP tool
